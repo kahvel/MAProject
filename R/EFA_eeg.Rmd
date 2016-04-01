@@ -1,0 +1,100 @@
+
+---
+title: "MA project"
+author: "Anti"
+output:
+  pdf_document:
+    keep_tex: true
+---
+
+```{r}
+
+
+```
+
+
+```{r}
+# Raw EEG
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+
+eeg_data <- read.csv("test5_1.csv", header=TRUE, sep=" ")
+eeg_data <- data[c("P7", "O1", "O2", "P8")]
+
+par(mfrow=c(2,2))
+plot(x, eeg_data$O1, type="l")
+plot(x, eeg_data$O2, type="l")
+plot(x, eeg_data$P7, type="l")
+plot(x, eeg_data$P8, type="l")
+```
+
+```{r}
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+
+target_data <- read.csv("test5_targets_1.csv", header=TRUE, sep=" ")
+trial <- target_data[5,]
+
+x <- trial$Start:trial$Stop
+trial_eeg <- eeg_data[trial$Start:trial$Stop,]
+trial_eeg <- as.data.frame(apply(trial_eeg, 2, function(x){scale(x, scale=FALSE)}))
+par(mfrow=c(3,2))
+plot(x, trial_eeg$O1, type="l")
+plot(x, trial_eeg$O2, type="l")
+plot(x, trial_eeg$P7, type="l")
+plot(x, trial_eeg$P8, type="l")
+
+
+fit <- factanal(trial_eeg, 1, scores="regression")
+plot(x, fit$scores, type="l")
+
+
+#par(mfrow=c(1,1))
+#plot(x, fit$scores, type="l")
+#lines(x, trial_eeg$O1, type="l", col="red")
+```
+
+
+```{r}
+packet_to_result <- function(packet) {
+    if (packet < 256) {
+        0
+    } else {
+        ceiling((packet-256)/32)
+    }
+}
+
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+
+result_data <- read.csv("test5_results_1.csv", header=TRUE, sep=" ")
+drops <- c("PSDA_sum_f1","PSDA_sum_f2","PSDA_sum_f3")
+cca <- c("CCA_f1", "CCA_f2", "CCA_f3")
+result_data <- result_data[,!(names(result_data) %in% drops)]
+
+result_data <- result_data[c(drops,cca)]
+
+
+trial <- target_data[3,]
+
+indices <- packet_to_result(trial$Start):packet_to_result(trial$Stop)
+trial_result <- result_data[indices,]
+
+trial_result <- as.data.frame(apply(trial_result, 2, function(x){scale(x)}))
+#plot(trial_result$PSDA_sum_f1, type="l")
+#lines(trial_result$CCA_f1, col="red")
+#plot(trial_result$PSDA_sum_f2, type="l")
+#lines(trial_result$CCA_f2, col="red")
+#plot(fit$scores, type="l")
+
+fit <- factanal(trial_result, 1, rotation="varimax", scores="regression")
+fit
+trial
+```
+
+```{r}
+trial <- target_data[3,]
+
+indices <- packet_to_result(trial$Start):packet_to_result(trial$Stop)
+trial_result <- result_data[indices,]
+
+fit <- factanal(trial_result, 1, rotation="varimax", scores="regression")
+```
+
