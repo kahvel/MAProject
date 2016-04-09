@@ -1,7 +1,7 @@
 
 # Take VEP-BCI results (for each steps) data as input an output a CSV file
 
-data_file_name = "test5_results_3.txt"
+data_file_name = "test5_results_3_all.txt"
 data_file = open(data_file_name)
 file_content = data_file.readlines()
 data_file.close()

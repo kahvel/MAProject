@@ -7,10 +7,6 @@ output:
     keep_tex: true
 ---
 
-```{r}
-
-
-```
 
 
 ```{r}
@@ -18,20 +14,20 @@ output:
 setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
 
 eeg_data <- read.csv("test5_1.csv", header=TRUE, sep=" ")
-eeg_data <- data[c("P7", "O1", "O2", "P8")]
+eeg_data <- eeg_data[c("P7", "O1", "O2", "P8")]
 
 par(mfrow=c(2,2))
-plot(x, eeg_data$O1, type="l")
-plot(x, eeg_data$O2, type="l")
-plot(x, eeg_data$P7, type="l")
-plot(x, eeg_data$P8, type="l")
+plot(eeg_data$O1, type="l")
+plot(eeg_data$O2, type="l")
+plot(eeg_data$P7, type="l")
+plot(eeg_data$P8, type="l")
 ```
 
 ```{r}
 setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
 
-target_data <- read.csv("test5_targets_1.csv", header=TRUE, sep=" ")
-trial <- target_data[5,]
+trial_data <- read.csv("test5_targets_2.csv", header=TRUE, sep=" ")
+trial <- trial_data[5,]
 
 x <- trial$Start:trial$Stop
 trial_eeg <- eeg_data[trial$Start:trial$Stop,]
@@ -54,25 +50,29 @@ plot(x, fit$scores, type="l")
 
 
 ```{r}
+step <- 1
 packet_to_result <- function(packet) {
     if (packet < 256) {
         0
     } else {
-        ceiling((packet-256)/32)
+        ceiling((packet-256+step)/step)
     }
 }
 
 setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
 
-result_data <- read.csv("test5_results_1.csv", header=TRUE, sep=" ")
-drops <- c("PSDA_sum_f1","PSDA_sum_f2","PSDA_sum_f3")
+result_data <- read.csv("test5_results_2_all.csv", header=TRUE, sep=" ")
+psdasum <- c("PSDA_sum_f1","PSDA_sum_f2","PSDA_sum_f3")
+psda2 <- c("PSDA_h2_f1","PSDA_h2_f2","PSDA_h2_f3")
+f <- c("f1", "f2","f3")
 cca <- c("CCA_f1", "CCA_f2", "CCA_f3")
-result_data <- result_data[,!(names(result_data) %in% drops)]
+f1 <- c("PSDA_sum_f1", "PSDA_h1_f1", "CCA_f1")
+result_data <- result_data[,!(names(result_data) %in% psdasum)]
 
-result_data <- result_data[c(drops,cca)]
+result_data <- result_data[c(f1)]
 
 
-trial <- target_data[3,]
+trial <- trial_data[3,]
 
 indices <- packet_to_result(trial$Start):packet_to_result(trial$Stop)
 trial_result <- result_data[indices,]
@@ -90,11 +90,287 @@ trial
 ```
 
 ```{r}
-trial <- target_data[3,]
 
-indices <- packet_to_result(trial$Start):packet_to_result(trial$Stop)
-trial_result <- result_data[indices,]
+new_cols <- matrix(NA, ncol=3, nrow=nrow(result_data))
+trial_index <- 1
 
-fit <- factanal(trial_result, 1, rotation="varimax", scores="regression")
+step <- 1
+
+for (i in 1:nrow(result_data)) {
+    trial <- trial_data[trial_index,]
+    if (256+i*step >= trial$Stop) {
+        trial_index <- trial_index + 1
+    }
+    new_cols[i,1] <- as.numeric(trial$Target == 1)
+    new_cols[i,2] <- as.numeric(trial$Target == 2)
+    new_cols[i,3] <- as.numeric(trial$Target == 3)
+}
+result_data["f1"] <- new_cols[,1]
+result_data["f2"] <- new_cols[,2]
+result_data["f3"] <- new_cols[,3]
+
+result_data <- result_data[1:(length(result_data)-1),]
 ```
+
+```{r}
+
+loadings <- list()#matrix(NA, nrow=nrow(trial_data), ncol=ncol(result_data))
+scores <- list()
+for (i in 2:nrow(trial_data)) {
+    trial <- trial_data[i,]
+    indices <- packet_to_result(trial$Start):packet_to_result(trial$Stop)
+    trial_result <- result_data[indices,]
+    
+    fit <- factanal(trial_result, 3, rotation="varimax", scores="regression")
+    loadings[[i]] <- fit$loadings[,1:3]
+    scores[[i]] <- fit$scores
+}
+#colnames(loadings) <- names(fit$loadings[,1])
+#cbind(round(loadings,2), trial_data$Target)
+
+
+```
+
+  
+```{r}
+library(TTR)
+
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+result_data <- read.csv("test5_results_1.csv", header=TRUE, sep=" ")
+result_data <- as.data.frame(apply(result_data, 2, function(x){scale(x)}))
+
+
+plot(SMA(result_data$PSDA_sum_f1,64), type="l", ylim=c(-3,3))
+lines(SMA(result_data$PSDA_sum_f2,64), col="red")
+lines(SMA(result_data$PSDA_sum_f3,64), col="blue")
+points(new_cols[,1]-4)
+
+
+par(mfrow=c(3,1))
+plot(SMA(result_data$PSDA_sum_f1,7), type="l", ylim=c(-3,3))
+lines(SMA(result_data$PSDA_h1_f1,7), col="red")
+lines(SMA(result_data$CCA_f1,7), col="blue")
+points(new_cols[,1])
+
+#par(mfrow=c(1,1))
+plot(SMA(result_data$PSDA_sum_f2,7), type="l", ylim=c(-3,3))
+lines(SMA(result_data$PSDA_h1_f2,7), col="red")
+lines(SMA(result_data$CCA_f2,7), col="blue")
+points(new_cols[,2])
+
+#par(mfrow=c(1,1))
+plot(SMA(result_data$PSDA_sum_f3,7), type="l", ylim=c(-3,3))
+lines(SMA(result_data$PSDA_h1_f3,7), col="red")
+lines(SMA(result_data$CCA_f3,7), col="blue")
+points(new_cols[,3])
+
+```
+
+
+I realized we cannot centralise (and normalise) all the features one by one. We have to combine some of them, otherwise we lose the ordering which is essential.??
+
+```{r}
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+result_data <- read.csv("test5_results_1_all.csv", header=TRUE, sep=" ")
+
+result_data <-
+  data.frame(PSDA_sum=c(result_data$PSDA_sum_f1, result_data$PSDA_sum_f2, result_data$PSDA_sum_f3),
+             PSDA_h1=c(result_data$PSDA_h1_f1, result_data$PSDA_h1_f2, result_data$PSDA_h1_f3),
+             CCA=c(result_data$CCA_f1, result_data$CCA_f2, result_data$CCA_f3))
+
+fit <- factanal(result_data, 3, rotation="promax", scores="regression")
+
+l <- nrow(result_data)/3
+
+par(mfrow=c(1,1))
+plot(result_data$PSDA_sum[1:l], type="l", ylim=c(-3,3))
+lines(result_data$PSDA_h1[1:l], col="red")
+lines(result_data$CCA[1:l], col="blue")
+points(new_cols[,1])
+
+points(scores[[2]])
+points(fit$scores[1:l])
+
+plot((fit$scores[1:381,1]), type="l")
+lines((fit$scores[1:381,2]), type="l", col="red")
+lines((fit$scores[1:381,3]), type="l", col="blue")
+points(new_cols[7:388,1]-2.5)
+points(new_cols[7:388,2]-2.5, col="red")
+points(new_cols[7:388,3]-2.5, col="blue")
+
+plot((fit$scores[,2]), type="l")
+lines((fit$scores[,1]), type="l", col="red")
+lines((fit$scores[,3]), type="l", col="blue")
+points(new_cols[,1]-3)
+points(new_cols[,2]-3, col="red")
+points(new_cols[,3]-3, col="blue")
+
+# try to factanal the scores
+
+fit2 <- factanal(fit$scores[indices,], 1, scores="regression")
+
+```
+
+Let's try to use moving average filter on the results before factanal.
+
+```{r}
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+result_data <- read.csv("test5_results_1_all.csv", header=TRUE, sep=" ")
+psda2 <- c("PSDA_h1_f1","PSDA_h1_f2","PSDA_h1_f3")
+psda2 <- c("PSDA_sum_f1","PSDA_sum_f2","PSDA_sum_f3")
+psda2 <- c("PSDA_h2_f1","PSDA_h2_f2","PSDA_h2_f3")
+result_data <- result_data[,!(names(result_data) %in% psda2)]
+library(TTR)
+result_data <- as.data.frame(apply(result_data, 2, function(x){SMA(x, 64)}))[64:nrow(result_data),]
+
+fit <- factanal(result_data, 5, rotation="varimax", scores="regression")
+
+difference1 <- fit$scores[,1]-fit$scores[,2]-fit$scores[,3]
+difference2 <- fit$scores[,2]-fit$scores[,1]-fit$scores[,3]
+difference3 <- fit$scores[,3]-fit$scores[,2]-fit$scores[,1]
+plot(difference1, type="l")
+lines(difference2, col="red")
+lines(difference3, col="blue")
+points(new_cols[7:200,2]-6)
+points(new_cols[7:200,3]-6, col="red")
+points(new_cols[7:200,1]-6, col="blue")
+
+```
+
+Combining EEG with results just puts the signal into one factor. Useless?
+
+```{r}
+
+result_data1 <- read.csv("test5_results_1_all.csv", header=TRUE, sep=" ")
+result_data2 <- read.csv("test5_results_2_all.csv", header=TRUE, sep=" ")
+result_data3 <- read.csv("test5_results_3_all.csv", header=TRUE, sep=" ")
+result_data <- rbind(result_data1, result_data2, result_data3)
+
+```
+
+
+
+```{r}
+#F1 -> PSDA_sum_f1, a3, NA
+#F2 -> PSDA_sum_f2, b3, NA
+#F3 -> PSDA_sum_f3, c3, NA
+
+library(sem)
+result_data_cov <- cov(result_data)
+model <- specify.model()
+F1 -> PSDA_h1_f1, a1, NA
+F1 -> PSDA_h2_f1, a2, NA
+F1 -> CCA_f1, a3, NA
+F2 -> PSDA_h1_f2, b1, NA
+F2 -> PSDA_h2_f2, b2, NA
+F2 -> CCA_f2, b3, NA
+F3 -> PSDA_h1_f3, c1, NA
+F3 -> PSDA_h2_f3, c2, NA
+F3 -> CCA_f3, c3, NA
+PSDA_h1_f1 <-> PSDA_h1_f1, e11,   NA 
+PSDA_h2_f1 <-> PSDA_h2_f1, e12,   NA 
+CCA_f1 <-> CCA_f1, e13,   NA 
+PSDA_h1_f2 <-> PSDA_h1_f2, e21,   NA 
+PSDA_h2_f2 <-> PSDA_h2_f2, e22,   NA 
+CCA_f2 <-> CCA_f2, e23,   NA 
+PSDA_h1_f3 <-> PSDA_h1_f3, e31,   NA 
+PSDA_h2_f3 <-> PSDA_h2_f3, e32,   NA 
+CCA_f3 <-> CCA_f3, e33,   NA 
+F1 <-> F1, NA,    1 
+F2 <-> F2, NA,    1
+F3 <-> F3, NA,    1
+F1 <-> F2, F1F2, NA
+F1 <-> F3, F1F3, NA
+F3 <-> F2, F3F2, NA
+
+r <- sem(model, result_data_cov, nrow(result_data), maxiter=50000, iterlim=10000)
+
+```
+
+```{r}
+
+setwd("C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders")
+
+result_data <- read.csv("RESULT.csv", header=TRUE)
+
+plot((result_data$Factor1[1:400]), type="l")
+lines((result_data$Factor3[1:400]), type="l", col="red")
+lines((result_data$Factor2[1:400]), type="l", col="blue")
+
+maximums <- unlist(apply(cbind(result_data$Factor1,result_data$Factor3,result_data$Factor2), 1, which.max))
+minimums <- unlist(apply(cbind(result_data$Factor1,result_data$Factor3,result_data$Factor2), 1, which.min))
+
+plot(SMA(maximums[3000:6000], 64), type="l")
+lines(SMA(minimums[3000:6000], 64), col="red")
+points(new_cols[,1]+0.5)
+points(new_cols[,2]+0.5, col="red")
+points(new_cols[,3]+0.5, col="blue")
+
+
+
+```
+
+```{r}
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+result_data <- read.csv("test5_results_2_all.csv", header=TRUE, sep=" ")
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+trial_data <- read.csv("test5_targets_2.csv", header=TRUE, sep=" ")
+
+for (i in 1:nrow(new_cols)) {
+    new_cols[i,] <- new_cols[i,] + c(rnorm(1, sd=0.5), rnorm(1, sd=0.5), rnorm(1, sd=0.5))
+}
+
+result_data["t1"] <- new_cols[,1]
+result_data["t2"] <- new_cols[,2]
+result_data["t3"] <- new_cols[,3]
+
+write.csv(result_data, "C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders\\result_with_cols.csv")
+```
+
+```{r}
+
+setwd("C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders")
+
+result_data <- read.csv("SCORES.csv", header=TRUE)
+
+colnames(result_data) <- c("f1", "f2", "f3")
+
+range <- 1:10433
+
+library(TTR)
+plot(SMA(result_data$f1[range],256), type="l")
+lines(SMA(result_data$f2[range],256), col="red")
+lines(SMA(result_data$f3[range],256), col="blue")
+points(new_cols[range,][,1]-2)
+points(new_cols[range,][,2]-2, col="red")
+points(new_cols[range,][,3]-2, col="blue")
+
+par(mfrow=c(1,1))
+plot(SMA(result_data$PSDA_sum_f1[range],64), type="l", ylim=c(0,6))
+lines(SMA(result_data$PSDA_h1_f1[range],64))
+lines(SMA(result_data$CCA_f1[range],64))
+points(new_cols[range,][,1]-1)
+points(new_cols[range,][,2]-1, col="red")
+points(new_cols[range,][,3]-1, col="blue")
+
+lines(SMA(result_data$PSDA_sum_f2[range],64), type="l", ylim=c(0,6), col="red")
+lines(SMA(result_data$PSDA_h1_f2[range],64), col="red")
+lines(SMA(result_data$CCA_f2[range],64), col="red")
+points(new_cols[range,][,1]-1)
+points(new_cols[range,][,2]-1, col="red")
+points(new_cols[range,][,3]-1, col="blue")
+
+```
+
+```{r}
+
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+result_data <- read.csv("test5_results_2_all.csv", header=TRUE, sep=" ")
+
+result_data <- apply(result_data, 2, function(x) {SMA(x, 64)})[64:nrow(result_data),]
+
+write.csv(result_data, "C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders\\moving_average.csv")
+
+```
+
 
