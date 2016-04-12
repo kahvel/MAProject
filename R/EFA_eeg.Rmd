@@ -105,9 +105,9 @@ for (i in 1:nrow(result_data)) {
     new_cols[i,2] <- as.numeric(trial$Target == 2)
     new_cols[i,3] <- as.numeric(trial$Target == 3)
 }
-result_data["f1"] <- new_cols[,1]
-result_data["f2"] <- new_cols[,2]
-result_data["f3"] <- new_cols[,3]
+result_data["t1"] <- new_cols[,1]
+result_data["t2"] <- new_cols[,2]
+result_data["t3"] <- new_cols[,3]
 
 result_data <- result_data[1:(length(result_data)-1),]
 ```
@@ -293,21 +293,21 @@ setwd("C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders")
 
 result_data <- read.csv("RESULT.csv", header=TRUE)
 
-plot((result_data$Factor1[1:400]), type="l")
-lines((result_data$Factor3[1:400]), type="l", col="red")
-lines((result_data$Factor2[1:400]), type="l", col="blue")
+range <- 1:10370
+average <- 64
+plot(SMA(result_data$Factor1[range], average), type="l", ylim=c(-3, 3))
+lines(SMA(result_data$Factor3[range], average), type="l", col="red")
+lines(SMA(result_data$Factor2[range], average), type="l", col="blue")
 
 maximums <- unlist(apply(cbind(result_data$Factor1,result_data$Factor3,result_data$Factor2), 1, which.max))
 minimums <- unlist(apply(cbind(result_data$Factor1,result_data$Factor3,result_data$Factor2), 1, which.min))
 
-plot(SMA(maximums[3000:6000], 64), type="l")
-lines(SMA(minimums[3000:6000], 64), col="red")
-points(new_cols[,1]+0.5)
-points(new_cols[,2]+0.5, col="red")
-points(new_cols[,3]+0.5, col="blue")
-
-
-
+plot(SMA(maximums[range], 256), type="l")
+lines(SMA(minimums[range], 256), col="red")
+offs <- 0
+points(new_cols[,1]+offs)
+points(new_cols[,2]+offs, col="red")
+points(new_cols[,3]+offs, col="blue")
 ```
 
 ```{r}
@@ -324,38 +324,38 @@ result_data["t1"] <- new_cols[,1]
 result_data["t2"] <- new_cols[,2]
 result_data["t3"] <- new_cols[,3]
 
-write.csv(result_data, "C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders\\result_with_cols.csv")
+write.csv(result_data, "C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders\\result_with_cols2.csv")
 ```
 
 ```{r}
 
 setwd("C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders")
 
-result_data <- read.csv("SCORES.csv", header=TRUE)
+scores <- read.csv("SCORES.csv", header=TRUE)
 
-colnames(result_data) <- c("f1", "f2", "f3")
+colnames(scores) <- c("f1", "f2", "f3")
 
 range <- 1:10433
 
 library(TTR)
-plot(SMA(result_data$f1[range],256), type="l")
-lines(SMA(result_data$f2[range],256), col="red")
-lines(SMA(result_data$f3[range],256), col="blue")
+plot(SMA(scores$f1[range],256), type="l")
+lines(SMA(scores$f2[range],256), col="red")
+lines(SMA(scores$f3[range],256), col="blue")
 points(new_cols[range,][,1]-2)
 points(new_cols[range,][,2]-2, col="red")
 points(new_cols[range,][,3]-2, col="blue")
 
 par(mfrow=c(1,1))
-plot(SMA(result_data$PSDA_sum_f1[range],64), type="l", ylim=c(0,6))
-lines(SMA(result_data$PSDA_h1_f1[range],64))
-lines(SMA(result_data$CCA_f1[range],64))
+plot(SMA(scores$PSDA_sum_f1[range],64), type="l", ylim=c(0,6))
+lines(SMA(scores$PSDA_h1_f1[range],64))
+lines(SMA(scores$CCA_f1[range],64))
 points(new_cols[range,][,1]-1)
 points(new_cols[range,][,2]-1, col="red")
 points(new_cols[range,][,3]-1, col="blue")
 
-lines(SMA(result_data$PSDA_sum_f2[range],64), type="l", ylim=c(0,6), col="red")
-lines(SMA(result_data$PSDA_h1_f2[range],64), col="red")
-lines(SMA(result_data$CCA_f2[range],64), col="red")
+lines(SMA(scores$PSDA_sum_f2[range],64), type="l", ylim=c(0,6), col="red")
+lines(SMA(scores$PSDA_h1_f2[range],64), col="red")
+lines(SMA(scores$CCA_f2[range],64), col="red")
 points(new_cols[range,][,1]-1)
 points(new_cols[range,][,2]-1, col="red")
 points(new_cols[range,][,3]-1, col="blue")
@@ -371,6 +371,204 @@ result_data <- apply(result_data, 2, function(x) {SMA(x, 64)})[64:nrow(result_da
 
 write.csv(result_data, "C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders\\moving_average.csv")
 
+```
+
+```{r}
+library(MARSS)
+Z.vals = list(
+  "z11", 0, 0,
+  "z21", "z22", 0,
+  "z31", "z32", "z33",
+  "z41", "z42", "z43",
+  "z51", "z52", "z53",
+  "z61", "z62", "z63"
+)
+N.ts = 6
+Z = matrix(Z.vals, nrow=N.ts, ncol=3, byrow=TRUE)
+Q = B = diag(1,3)
+R.vals = list(
+"r11",0,0,0,0,0,
+0,"r22",0,0,0,0,
+0,0,"r33",0,0,0,
+0,0,0,"r44",0,0,
+0,0,0,0,"r55",0,
+0,0,0,0,0,"r66")
+R = matrix(R.vals, nrow=N.ts, ncol=N.ts, byrow=TRUE)
+x0 = U = matrix(0, nrow=3, ncol=1)
+A = matrix(0, nrow=6, ncol=1)
+V0 = diag(5,3)
+dfa.model = list(Z=Z, A="zero", R=R, B=B, U=U, Q=Q, x0=x0, V0=V0)
+cntl.list = list(maxit=50)
+kemz.3 = MARSS(t(as.matrix(result_data))[,1:400], model=dfa.model, control=cntl.list)
+```
+
+```{r}
+# load the data (there are 3 datasets contained here)
+data(lakeWAplankton)
+# we want lakeWAplanktonTrans, which has been transformed
+# so the 0s are replaced with NAs and the data z-scored
+dat = lakeWAplanktonTrans
+# use only the 10 years from 1980-1989
+plankdat = dat[dat[,"Year"]>=1980 & dat[,"Year"]<1990,]
+# create vector of phytoplankton group names
+phytoplankton = c("Cryptomonas", "Diatoms", "Greens",
+"Unicells", "Other.algae")
+# get only the phytoplankton
+dat.spp.1980 = plankdat[,phytoplankton]
+dat.spp.1980 = t(dat.spp.1980)
+
+```
+
+
+```{r}
+library(TTR)
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+result_data <- read.csv("test5_results_2_all.csv", header=TRUE, sep=" ")
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+trial_data <- read.csv("test5_targets_2.csv", header=TRUE, sep=" ")
+
+classify_results <- function(method_data) {
+    result <- matrix(NA, ncol=3, nrow=nrow(method_data))
+    for (i in 1:nrow(method_data)) {
+        index <- order(method_data[i,], decreasing=TRUE)
+        #result[i,] <- c(i, index[1], method_data[i,index[1]]-method_data[i,index[2]])
+        result[i,] <- c(i, index[1], method_data[i,index[1]]/sum(method_data[i,]))
+    }
+    result
+}
+
+step <- 1
+sma <- 0
+plot_roc <- function(result, rep, target=0){
+    index <- order(result[,3], decreasing=TRUE)
+    roc_x <- c(0)
+    roc_y <- c(0)
+    x_count <- 0
+    y_count <- 0
+    for (i in 1:nrow(result)) {
+        r <- result[index[i],]
+        for (j in 1:nrow(trial_data)) {
+            row <- trial_data[j,]
+            packet <- r[1]*step+256-step + sma
+            if (packet <= row$Stop && packet >= row$Start) {
+                if (rep || index[i] == 1 || index[i] != 1 && result[index[i]-1,2] != r[2]) { # no repeating
+                    len <- y_count+x_count+1
+                    if (target != 0) {
+                        expected_target = target
+                    } else {
+                        expected_target = row$Target
+                    }
+                    if (r[2] == expected_target) {
+                        roc_x <- c(roc_x, roc_x[len])
+                        roc_y <- c(roc_y, roc_y[len]+1)
+                        y_count <- y_count + 1
+                    } else {
+                        roc_x <- c(roc_x, roc_x[len]+1)
+                        roc_y <- c(roc_y, roc_y[len])
+                        x_count <- x_count + 1
+                    }
+                }
+                break
+            }
+        }
+    }
+    roc_x <- roc_x/x_count
+    roc_y <- roc_y/y_count
+    list(x=roc_x, y=roc_y)
+}
+
+
+
+result_avg <- as.data.frame(apply(result_data, 2, function(x){SMA(x, 64)}))[64:nrow(result_data),]
+
+plot(plot_roc(classify_results(result_data[c("CCA_f1", "CCA_f2", "CCA_f3")]), TRUE), type="l")
+lines(plot_roc(classify_results(result_data[c("PSDA_sum_f1", "PSDA_sum_f2", "PSDA_sum_f3")]), TRUE),
+      type="l", col="blue")
+lines(plot_roc(classify_results(result_data[c("PSDA_h1_f1", "PSDA_h1_f2", "PSDA_h1_f3")]), TRUE),
+      type="l", col="red")
+lines(plot_roc(classify_results(result_data[c("PSDA_h2_f1", "PSDA_h2_f2", "PSDA_h2_f3")]), FALSE),
+      type="l", col="green")
+abline(0,1)
+
+classification <- classify_results(result_data)
+
+line <- plot_roc(classify_results(scores))
+lines(plot_roc(classify_results(scores)), type="l", col="blue")
+
+
+scores <- read.csv("SCORES.csv", header=TRUE)
+colnames(scores) <- c("f1", "f2", "f3")
+lines(plot_roc(classify_results(scores)), type="l", col="orange")
+
+```
+
+No repeating made h2 better.
+
+```{r}
+s <- read.table("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\R\\s.txt")
+
+test <- as.data.frame(apply(result_data[c("PSDA_h2_f1","PSDA_h2_f2","PSDA_h2_f3",
+                                          "CCA_f1", "CCA_f2", "CCA_f3")], 2, function(x){scale(x)}))
+factor_scores <- as.matrix(test) %*% (as.matrix(s))
+
+lines(plot_roc(classify_results(factor_scores), TRUE), type="l", col="red")
+```
+
+Lets try time series factor analysis (TSFA)
+
+```{r}
+library(tsfa)
+
+target <- rbind(c(1,0,0),
+                c(0,1,0),
+                c(0,0,1),
+                c(1,0,0),
+                c(0,1,0),
+                c(0,0,1))
+
+fit = estTSFmodel(ts(result_data[c("CCA_f1", "CCA_f2", "CCA_f3", "PSDA_h1_f1","PSDA_h1_f2","PSDA_h1_f3")]), 3, rotation="targetQ", GPFargs = list(Target=target))
+
+scores = as.ts(apply(fit$f, 2, function(x){scale(x)}))
+plot(scores)
+
+plot(plot_roc(classify_results(scores), FALSE), type="l", col="red", lwd=2)
+abline(0, 1)
+```
+
+```{r}
+
+if (require("CDNmoney")){
+    data("CanadianMoneyData.asof.28Jan2005", package="CDNmoney")
+    data("CanadianCreditData.asof.28Jan2005", package="CDNmoney")
+ 
+    z <- tframed(tbind(
+  	MB2001,
+  	MB486 + MB452 + MB453 ,
+  	NonbankCheq,
+  	MB472 + MB473 + MB487p,
+  	MB475,
+  	NonbankNonCheq + MB454 + NonbankTerm + MB2046 + MB2047 + MB2048 +
+  	MB2057 + MB2058 + MB482),
+  	names=c("currency", "personal cheq.", "NonbankCheq",
+  	"N-P demand & notice", "N-P term", "Investment" )
+      )
+ 
+    z <- tfwindow(tbind (z, ConsumerCredit, ResidentialMortgage,
+  			    ShortTermBusinessCredit, OtherBusinessCredit),
+  	 start=c(1981,11), end=c(2004,11))
+ 
+    cpi <- 100 * M1total / M1real
+    popm <- M1total / M1PerCapita
+    scale <- tfwindow(1e8 /(popm * cpi), tf=tframe(z))
+
+    MBandCredit <- sweep(z, 1, scale, "*")
+    c4withML  <- estTSF.ML(MBandCredit, 4)
+    tfplot(ytoypc(factors(c4withML)),
+  	   Title="Factors from 4 factor model (year-to-year growth rate)")
+    tfplot(c4withML, graphs.per.page=3)
+    summary(c4withML)
+    summary(TSFmodel(c4withML))
+  }
 ```
 
 
