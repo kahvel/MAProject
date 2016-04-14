@@ -399,7 +399,7 @@ A = matrix(0, nrow=6, ncol=1)
 V0 = diag(5,3)
 dfa.model = list(Z=Z, A="zero", R=R, B=B, U=U, Q=Q, x0=x0, V0=V0)
 cntl.list = list(maxit=50)
-kemz.3 = MARSS(t(as.matrix(result_data))[,1:400], model=dfa.model, control=cntl.list)
+kemz.3 = MARSS(t(as.matrix(result_data)), model=dfa.model, control=cntl.list)
 ```
 
 ```{r}
@@ -423,9 +423,9 @@ dat.spp.1980 = t(dat.spp.1980)
 ```{r}
 library(TTR)
 setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
-result_data <- read.csv("test5_results_2_all.csv", header=TRUE, sep=" ")
+result_data <- read.csv("test5_results_3_all.csv", header=TRUE, sep=" ")
 setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
-trial_data <- read.csv("test5_targets_2.csv", header=TRUE, sep=" ")
+trial_data <- read.csv("test5_targets_3.csv", header=TRUE, sep=" ")
 
 classify_results <- function(method_data) {
     result <- matrix(NA, ncol=3, nrow=nrow(method_data))
@@ -438,7 +438,7 @@ classify_results <- function(method_data) {
 }
 
 step <- 1
-sma <- 0
+sma <- 1
 plot_roc <- function(result, rep, target=0){
     index <- order(result[,3], decreasing=TRUE)
     roc_x <- c(0)
@@ -449,7 +449,7 @@ plot_roc <- function(result, rep, target=0){
         r <- result[index[i],]
         for (j in 1:nrow(trial_data)) {
             row <- trial_data[j,]
-            packet <- r[1]*step+256-step + sma
+            packet <- r[1]*step+256-step + sma - 1
             if (packet <= row$Stop && packet >= row$Start) {
                 if (rep || index[i] == 1 || index[i] != 1 && result[index[i]-1,2] != r[2]) { # no repeating
                     len <- y_count+x_count+1
@@ -529,46 +529,243 @@ target <- rbind(c(1,0,0),
 fit = estTSFmodel(ts(result_data[c("CCA_f1", "CCA_f2", "CCA_f3", "PSDA_h1_f1","PSDA_h1_f2","PSDA_h1_f3")]), 3, rotation="targetQ", GPFargs = list(Target=target))
 
 scores = as.ts(apply(fit$f, 2, function(x){scale(x)}))
-plot(scores)
+#plot(scores)
 
-plot(plot_roc(classify_results(scores), FALSE), type="l", col="red", lwd=2)
+classified <- classify_results(scores)
+plot(plot_roc(classified, FALSE, 1), type="l")
+lines(plot_roc(classified, FALSE, 2), type="l", col="red")
+lines(plot_roc(classified, FALSE, 3), type="l", col="blue")
 abline(0, 1)
+
+library("ROCR")
+
+
+pred <- prediction(classified[,3], true_labels == 1)
+perf <- performance(pred, "tpr", "fpr")
+plot(perf, add=T)
+abline(0,1)
 ```
+
+Classification, let's start out simple and move on to more complex
 
 ```{r}
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+result_data <- read.csv("test5_results_2_all.csv", header=TRUE, sep=" ")
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+trial_data <- read.csv("test5_targets_2.csv", header=TRUE, sep=" ")
 
-if (require("CDNmoney")){
-    data("CanadianMoneyData.asof.28Jan2005", package="CDNmoney")
-    data("CanadianCreditData.asof.28Jan2005", package="CDNmoney")
- 
-    z <- tframed(tbind(
-  	MB2001,
-  	MB486 + MB452 + MB453 ,
-  	NonbankCheq,
-  	MB472 + MB473 + MB487p,
-  	MB475,
-  	NonbankNonCheq + MB454 + NonbankTerm + MB2046 + MB2047 + MB2048 +
-  	MB2057 + MB2058 + MB482),
-  	names=c("currency", "personal cheq.", "NonbankCheq",
-  	"N-P demand & notice", "N-P term", "Investment" )
-      )
- 
-    z <- tfwindow(tbind (z, ConsumerCredit, ResidentialMortgage,
-  			    ShortTermBusinessCredit, OtherBusinessCredit),
-  	 start=c(1981,11), end=c(2004,11))
- 
-    cpi <- 100 * M1total / M1real
-    popm <- M1total / M1PerCapita
-    scale <- tfwindow(1e8 /(popm * cpi), tf=tframe(z))
+get_true_labels = function(trial_data, step=1, sma=1) {
+    true_labels = c()
+    trial_index <- 1
+    row <- trial_data[trial_index,]
+    packet_count = trial_data[nrow(trial_data),]$Stop
+    for (i in seq(256-step, packet_count, step)) {
+        if (i > row$Stop) {
+            trial_index <- trial_index + 1
+            row <- trial_data[trial_index,]
+        }
+        if (i != packet_count) {
+            true_labels = c(true_labels, row$Target)
+        }
+    }
+    true_labels
+}
 
-    MBandCredit <- sweep(z, 1, scale, "*")
-    c4withML  <- estTSF.ML(MBandCredit, 4)
-    tfplot(ytoypc(factors(c4withML)),
-  	   Title="Factors from 4 factor model (year-to-year growth rate)")
-    tfplot(c4withML, graphs.per.page=3)
-    summary(c4withML)
-    summary(TSFmodel(c4withML))
-  }
+true_labels = get_true_labels(trial_data)
+
+color = c("black", "red", "blue")
+psda1 <- c("PSDA_h1_f1","PSDA_h1_f2","PSDA_h1_f3")
+psdasum <- c("PSDA_sum_f1","PSDA_sum_f2","PSDA_sum_f3")
+psda2 <- c("PSDA_h2_f1","PSDA_h2_f2","PSDA_h2_f3")
+cca <- c("CCA_f1", "CCA_f2", "CCA_f3")
+
+method_names = list(PSDA_h1 = psda1,
+                    PSDA_sum = psdasum,
+                    PSDA_h2 = psda2,
+                    CCA=cca)
+library(ROCR)
+par(mfrow=c(2,2))
+plot_rocs = function(input_data, labels, method_names) {
+    result=input_data[["result"]]
+    if (is.null(result)) {
+        result=input_data
+    }
+    overall=input_data[["overall"]]
+    for (j in 1:length(method_names)){
+        for (i in 1:length(method_names[[j]])) {
+            pred <- prediction(result[method_names[[j]][i]], labels == i)
+            perf <- performance(pred, "tpr", "fpr")
+            plot(perf, add=i!=1, col=color[i], main=names(method_names)[j])
+        }
+        if (!is.null(overall)) {
+            pred <- prediction(overall[,2], labels == overall[,1])
+            perf <- performance(pred, "tpr", "fpr")
+            plot(perf, add=T, main=names(method_names)[j], col="green")
+        }
+        abline(0,1)
+        #legend("bottomright", legend=c(6.67, 7.5, 8.57), col=color[i])
+    }
+}
+#         roc_x <- c(0)
+#         roc_y <- c(0)
+#         x_count <- 0
+#         y_count <- 0
+#         sorted <- apply(result[method_names[[j]]], 1, function(x){sort(x, decreasing=TRUE)})
+#         index <- order(sorted[])
+#         for (i in 1:nrow(result)){
+#             r = result[index[i], method_names[[j]]]
+#             index2 <- order(r, decreasing=TRUE)
+#             len <- y_count+x_count+1
+#             if (index2[1] == labels[i]) {
+#                 roc_x <- c(roc_x, roc_x[len])
+#                 roc_y <- c(roc_y, roc_y[len]+1)
+#                 y_count <- y_count + 1
+#             } else {
+#                 roc_x <- c(roc_x, roc_x[len]+1)
+#                 roc_y <- c(roc_y, roc_y[len])
+#                 x_count <- x_count + 1
+#             }
+#         }
+#         roc_x <- roc_x/x_count
+#         roc_y <- roc_y/y_count
+#         lines(roc_x, roc_y, col="green")
+
+setwd("C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders")
+sas_factor1 <- read.csv("RESULT1.csv", header=TRUE)
+sas_factor2 <- read.csv("RESULT2.csv", header=TRUE)
+sas_factor3 <- read.csv("RESULT3.csv", header=TRUE)
+sas_factor <- data.frame(sas_factor1["Factor1"],
+                         sas_factor2["Factor1"],
+                         sas_factor3["Factor1"])
+names(sas_factor) <- c("Factor1","Factor2","Factor3")
+plot_rocs(sas_factor, true_labels, list(sas=c("Factor1","Factor2","Factor3")))
+
+sma_sas <- as.data.frame(apply(sas_factor, 2, function(x){SMA(x, 64)}))[64:nrow(sas_factor),]
+plot_rocs(sma_sas, true_labels[64:nrow(sas_factor)], list(sas=c("Factor1","Factor2","Factor3")))
+
+
+sas_factor <- read.csv("RESULT.csv", header=TRUE)
+sas_factor["Factor2"] <- sas_factor["Factor1"]
+sas_factor["Factor1"] <- sas_factor["Factor3"]
+sas_factor["Factor3"] <- sas_factor["Factor4"]
+
+frequency_combinations = list(f1=c("CCA_f1", "PSDA_h1_f1", "PSDA_h2_f1"),
+                              f2=c("CCA_f2", "PSDA_h1_f2", "PSDA_h2_f2"),
+                              f3=c("CCA_f3", "PSDA_h1_f3", "PSDA_h2_f3"))
+
+frequency_names = list(TSFA=c("V1","V2","V3"))
+
+scores = find_scores(result_data, frequency_combinations, 1)
+plot_rocs(scores, true_labels, frequency_names)
+
+positive_data = apply(sas_factor, 2, function(x){x-min(x)+1})
+classes = classify_results(positive_data, list(sas=c("Factor1","Factor2","Factor3")))
+plot_rocs(classes, true_labels[1:11884], list(sas=c("Factor1","Factor2","Factor3")))
+
+
+
+plot_rocs(result_data, true_labels, method_names)
+library(TTR)
+sma_result <- as.data.frame(apply(result_data, 2, function(x){SMA(x, 64)}))[64:nrow(result_data),]
+plot_rocs(sma_result, true_labels[64:nrow(result_data)], method_names)
+
+library(tsfa)
+target2 <- rbind(c(1,0,0),c(0,1,0),c(0,0,1),c(1,0,0),c(0,1,0),c(0,0,1))
+target3 <- rbind(c(1,0,0),c(0,1,0),c(0,0,1),c(1,0,0),c(0,1,0),c(0,0,1),c(1,0,0),c(0,1,0),c(0,0,1))
+
+method_combinations = list(CCA_PSDA_h1=c("CCA_f1", "CCA_f2", "CCA_f3", "PSDA_h1_f1","PSDA_h1_f2","PSDA_h1_f3"),
+                           CCA_PSDA_h2=c("CCA_f1", "CCA_f2", "CCA_f3", "PSDA_h2_f1","PSDA_h2_f2","PSDA_h2_f3"),
+                           CCA_PSDA_sum=c("CCA_f1", "CCA_f2", "CCA_f3", "PSDA_sum_f1","PSDA_sum_f2","PSDA_sum_f3"),
+                           CCA_PSDA_h1_h2=c("CCA_f1", "CCA_f2", "CCA_f3", "PSDA_h1_f1","PSDA_h1_f2","PSDA_h1_f3","PSDA_h2_f1","PSDA_h2_f2","PSDA_h2_f3"))
+
+
+factor_names = list(CCA_PSDA_h1=c("V1","V2","V3"),#c("CCA_PSDA_h11","CCA_PSDA_h12","CCA_PSDA_h13"),
+                    CCA_PSDA_h2=c("V4","V5","V6"),#c("CCA_PSDA_h21","CCA_PSDA_h22","CCA_PSDA_h23"),
+                    CCA_PSDA_sum=c("V7","V8","V9"),#c("CCA_PSDA_sum1","CCA_PSDA_sum2","CCA_PSDA_sum3"),
+                    CCA_PSDA_h1_h2=c("V10","V11","V12"))#c("CCA_PSDA_h1_h21","CCA_PSDA_h1_h22","CCA_PSDA_h1_h23"))
+
+
+find_scores = function(input_data, method_combinations, nfact=3) {
+    result = matrix(NA, nrow=nrow(input_data), ncol=length(method_combinations)*nfact)
+    for (i in 1:length(method_combinations)) {
+        if (length(method_combinations[[i]])==6) {
+            target = target2
+        } else {
+            target = target3
+        }
+        if (nfact==3) {
+            fit = estTSFmodel(ts(input_data[method_combinations[[i]]]),
+                              3, rotation="targetQ", GPFargs = list(Target=target, maxit=1000))
+        } else if (nfact==1) {
+            fit = estTSFmodel(ts(input_data[method_combinations[[i]]]), 1)
+        }
+        scores = as.data.frame(apply(fit$f, 2, function(x){scale(x)}))
+        for (j in 1:nfact) {
+            result[,(i-1)*nfact+j] = scores[,j]
+        }
+    }
+    as.data.frame(result)
+}
+
+scores = find_scores(result_data, method_combinations)
+plot_rocs(scores, true_labels, factor_names)
+scores = find_scores(sma_result, method_combinations)
+plot_rocs(scores, true_labels[64:nrow(result_data)], factor_names)
+
+
+fit = estTSFmodel(ts(sma_result[c("PSDA_h2_f1","PSDA_h2_f2","PSDA_h2_f3", "PSDA_h1_f1","PSDA_h1_f2","PSDA_h1_f3")]), 3, rotation="targetQ", GPFargs = list(Target=target2))
+scores = as.data.frame(apply(fit$f, 2, function(x){scale(x)}))
+plot_rocs(scores, true_labels[64:nrow(result_data)], list(Faktorid=c("Factor 1", "Factor 2", "Factor 3")))
+fit = estTSFmodel(ts(result_data[c("PSDA_h2_f1","PSDA_h2_f2","PSDA_h2_f3", "PSDA_h1_f1","PSDA_h1_f2","PSDA_h1_f3")]), 3, rotation="targetQ", GPFargs = list(Target=target2))
+scores = as.data.frame(fit$f)
+plot_rocs(scores, true_labels, list(Faktorid=c("Factor 1", "Factor 2", "Factor 3")))
+
+
+
+
+classify_results <- function(input_data, method_names) {
+    result = matrix(NA, nrow=nrow(input_data), ncol=length(method_names)*3)
+    overall = matrix(NA, nrow=nrow(input_data), 2)
+    for (j in 1:length(method_names)) {
+        for (i in 1:nrow(input_data)) {
+            method_data <- input_data[i, method_names[[j]]]
+            index <- order(method_data, decreasing=TRUE)
+            result[i,(j-1)*3+index[1]] <- method_data[index[1]]/sum(method_data)+2
+            result[i,(j-1)*3+index[2]] <- method_data[index[2]]/sum(method_data)+1
+            result[i,(j-1)*3+index[3]] <- method_data[index[3]]/sum(method_data)
+            overall[i,] <- c(index[1], method_data[index[1]]/sum(method_data))
+        }
+    }
+    colnames(result) <- unlist(method_names)
+    list(result=as.data.frame(result), overall=overall)
+}
+
+positive_data = apply(result_data, 2, function(x){x-min(x)+1})
+classes = classify_results(positive_data, method_names)
+plot_rocs(classes, true_labels, method_names)
+
+positive_data = apply(result_data, 2, function(x){x-min(x)+1})
+classes = classify_results(positive_data, method_names)
+classes = as.data.frame(apply(classes, 2, function(x){SMA(x, 64)})[64:nrow(classes),])
+plot_rocs(classes, true_labels[64:length(true_labels)], method_names)
+
+positive_sma_data = apply(sma_result, 2, function(x){x-min(x)+1})
+classes = classify_results(positive_sma_data, method_names)
+plot_rocs(classes, true_labels[64:length(true_labels)], method_names)
+
+scores = find_scores(result_data, method_combinations)
+positive_data = apply(scores, 2, function(x){x-min(x)+1})
+classes = classify_results(positive_data, factor_names)
+plot_rocs(classes, true_labels, factor_names)
+
+scores = find_scores(sma_result, method_combinations)
+positive_data = apply(scores, 2, function(x){x-min(x)+1})
+classes = classify_results(positive_data, factor_names)
+plot_rocs(classes, true_labels[64:length(true_labels)], factor_names)
+
 ```
 
+Lähtetunnuste dispersioonid on ühed. Kommunaliteetide summa jagatud tunnuste arvuga. Peakomponendid - maksimeerib dispersiooni. Faktormeetod - kirjelda ära korrelatsioonimaatriks (see esikohal ja siis vaadata ka dispersiooni). 
+
+Kinnitavas p-value võib olla liiga tundlik, liiga väike.
 

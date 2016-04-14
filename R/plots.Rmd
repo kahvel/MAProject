@@ -1,0 +1,465 @@
+
+---
+output:
+  pdf_document:
+    keep_tex: yes
+  html_document: default
+---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(cache=TRUE)
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+trial_data <- read.csv("test5_targets_2.csv", header=TRUE, sep=" ")
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+eeg_data <- read.csv("test5_2.csv", header=TRUE, sep=" ")[c("O1", "O2", "P7", "P8")]
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+frequency_data <- read.csv("test5_freq_2.csv", header=TRUE, sep=" ")
+```
+
+# EEG  signaal
+
+```{r, echo=FALSE}
+knitr::kable(head(eeg_data))
+plot(ts(eeg_data), main="EEG signaal")
+```
+
+# Kasutatud sagedused
+
+```{r, echo=FALSE}
+tab <- cbind(c(1:nrow(frequency_data)), frequency_data)
+colnames(tab) <- c("ID", "Frequency")
+knitr::kable(tab)
+```
+
+# EEG signaalist eraldatud tunnused
+
+```{r, echo=FALSE}
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+result_data <- read.csv("test5_results_2_all.csv", header=TRUE, sep=" ")
+knitr::kable(head(result_data[c("PSDA_sum_f1","PSDA_sum_f2","PSDA_sum_f3",
+                                "CCA_f1","CCA_f2","CCA_f3")]))
+new_cols <- matrix(NA, ncol=3, nrow=nrow(result_data))
+trial_index <- 1
+step <- 1
+for (i in 1:nrow(result_data)) {
+    trial <- trial_data[trial_index,]
+    if (256+i*step-step >= trial$Stop) {#256+i*step >= trial$Stop
+        trial_index <- trial_index + 1
+    }
+    new_cols[i,1] <- as.numeric(trial$Target == 1)
+    new_cols[i,2] <- as.numeric(trial$Target == 2)
+    new_cols[i,3] <- as.numeric(trial$Target == 3)
+}
+```
+
+
+```{r, echo=FALSE}
+plot(ts(result_data[c("CCA_f1", "CCA_f2", "CCA_f3")]),
+     main="Kanoonilise korrelatsioonanalüüsi eraldatud tunnused")
+plot(ts(result_data[c("PSDA_sum_f1", "PSDA_sum_f2", "PSDA_sum_f3")]),
+     main="Võimsusspektri analüüsi eraldatud tunnused")
+```
+
+# Oodatav (perfektne) tulemus
+
+```{r, echo=FALSE}
+knitr::kable(trial_data)
+names(new_cols) <- c("f1", "f2", "f3")
+plot(ts(new_cols), col="blue", main="Oodatav tulemus")
+```
+
+# Eraldatud tunnused + oodatav (perfektne) tulemus
+
+```{r, echo=FALSE}
+plot(1:nrow(result_data), result_data[,"CCA_f1"], type="l")
+lines(new_cols[,1]*(max(result_data[,"CCA_f1"])-min(result_data[,"CCA_f1"]))+min(result_data[,"CCA_f1"]), col="blue", lwd=3)
+plot(1:nrow(result_data), result_data[,"CCA_f2"], type="l")
+lines(new_cols[,2]*(max(result_data[,"CCA_f2"])-min(result_data[,"CCA_f2"]))+min(result_data[,"CCA_f2"]), col="blue", lwd=3)
+plot(1:nrow(result_data), result_data[,"CCA_f3"], type="l")
+lines(new_cols[,3]*(max(result_data[,"CCA_f3"])-min(result_data[,"CCA_f3"]))+min(result_data[,"CCA_f3"]), col="blue", lwd=3)
+```
+
+# ROC kõver
+
+```{r, echo=FALSE}
+get_true_labels = function(trial_data, step=1, sma=1) {
+    true_labels = c()
+    trial_index <- 1
+    row <- trial_data[trial_index,]
+    packet_count = trial_data[nrow(trial_data),]$Stop
+    for (i in seq(256-step, packet_count, step)) {
+        if (i > row$Stop) {
+            trial_index <- trial_index + 1
+            row <- trial_data[trial_index,]
+        }
+        if (i != packet_count) {
+            true_labels = c(true_labels, row$Target)
+        }
+    }
+    true_labels
+}
+
+true_labels = get_true_labels(trial_data)
+
+color = c("green", "red", "blue")
+psda1 <- c("PSDA_h1_f1","PSDA_h1_f2","PSDA_h1_f3")
+psdasum <- c("PSDA_sum_f1","PSDA_sum_f2","PSDA_sum_f3")
+psda2 <- c("PSDA_h2_f1","PSDA_h2_f2","PSDA_h2_f3")
+cca <- c("CCA_f1", "CCA_f2", "CCA_f3")
+
+method_names = list(PSDA_h1 = psda1,
+                    PSDA_sum = psdasum,
+                    PSDA_h2 = psda2,
+                    CCA=cca)
+library(ROCR)
+par(mfrow=c(2,2))
+plot_rocs = function(input_data, labels, method_names) {
+    result=input_data[["result"]]
+    if (is.null(result)) {
+        result=input_data
+    }
+    overall=input_data[["overall"]]
+    for (j in 1:length(method_names)){
+        for (i in 1:length(method_names[[j]])) {
+            pred <- prediction(result[method_names[[j]][i]], labels == i)
+            perf <- performance(pred, "tpr", "fpr")
+            plot(perf, add=i!=1, col=color[i], main=names(method_names)[j])
+        }
+        if (!is.null(overall)) {
+            pred <- prediction(overall[,2], labels == overall[,1])
+            perf <- performance(pred, "tpr", "fpr")
+            plot(perf, add=T, main=names(method_names)[j], col="green")
+        }
+        abline(0,1)
+        #legend("bottomright", legend=c(6.67, 7.5, 8.57), col=color[i])
+    }
+}
+plot_rocs(result_data, true_labels, method_names)
+#library(TTR)
+#sma_result <- as.data.frame(apply(result_data, 2, function(x){SMA(x, 64)}))[64:nrow(result_data),]
+#plot_rocs(sma_result, true_labels[64:nrow(result_data)], method_names)
+
+```
+
+
+```{r, echo=FALSE}
+setwd("C:\\Users\\Anti\\Desktop\\sas\\tables")
+tab <- matrix(NA, ncol=24, nrow=9)
+
+
+prinone_a <- read.table("prinonea.txt")
+prinone_h <- read.table("prinoneh.txt")
+tab[,1] <- prinone_a[,1]
+tab[,2] <- prinone_a[,2]
+tab[,3] <- prinone_a[,3]
+tab[,4] <- t(prinone_h)[,1]
+prinone_sum <- 5.230298 # Final Communality Estimates, summaarne kirjeldatus
+prinone_ratio <- prinone_sum/9
+prinone_resitual <- 0.10836481 # Root Mean Square Off-Diagonal Residuals, jääkkorrelatsioon
+prinone_partial <- 0.27268176 #R oot Mean Square Off-Diagonal Partials, osakorrelatsioon
+
+prinone_sum1 <- 4.083133 # Final Communality Estimates, summaarne kirjeldatus
+prinone_ratio1 <- prinone_sum1/6
+prinone_resitual1 <- 0.14176016 # Root Mean Square Off-Diagonal Residuals, jääkkorrelatsioon
+prinone_partial1 <- 0.46557758 #R oot Mean Square Off-Diagonal Partials, osakorrelatsioon
+prinone_sum2 <- 4.096485 # Final Communality Estimates, summaarne kirjeldatus
+prinone_ratio2 <- prinone_sum2/6
+prinone_resitual2 <- 0.14035253 # Root Mean Square Off-Diagonal Residuals, jääkkorrelatsioon
+prinone_partial2 <- 0.46305271 #R oot Mean Square Off-Diagonal Partials, osakorrelatsioon
+
+prinmax_a <- read.table("prinmaxa.txt")
+prinmax_h <- read.table("prinmaxh.txt")
+tab[,9] <- prinmax_a[,1]
+tab[,10] <- prinmax_a[,2]
+tab[,11] <- prinmax_a[,3]
+tab[,12] <- t(prinmax_h)[,1]
+prinmax_sum <- 3.490738 # Final Communality Estimates, summaarne kirjeldatus
+prinmax_ratio <- prinmax_sum/9
+prinmax_resitual <- 0.03472091 # Root Mean Square Off-Diagonal Residuals, jääkkorrelatsioon
+prinmax_partial <- 0.05427153 #R oot Mean Square Off-Diagonal Partials, osakorrelatsioon
+
+
+prinmax_sum1 <- 2.068716 # Final Communality Estimates, summaarne kirjeldatus
+prinmax_ratio1 <- prinmax_sum1/6
+prinmax_resitual1 <- 0.02332615 # Root Mean Square Off-Diagonal Residuals, jääkkorrelatsioon
+prinmax_partial1 <- 0.03597366 #R oot Mean Square Off-Diagonal Partials, osakorrelatsioon
+prinmax_sum2 <- 1.851586 # Final Communality Estimates, summaarne kirjeldatus
+prinmax_ratio2 <- prinmax_sum2/6
+prinmax_resitual2 <-  0.02316445 # Root Mean Square Off-Diagonal Residuals, jääkkorrelatsioon
+prinmax_partial2 <- 0.03403585 #R oot Mean Square Off-Diagonal Partials, osakorrelatsioon
+
+prinsmc_a <- read.table("prinsmca.txt")
+prinsmc_h <- read.table("prinsmch.txt")
+tab[,5] <- prinsmc_a[,1]
+tab[,6] <- prinsmc_a[,2]
+tab[,7] <- prinsmc_a[,3]
+tab[,8] <- t(prinsmc_h)[,1]
+prinsmc_sum <- 3.078970 # Final Communality Estimates, summaarne kirjeldatus
+prinsmc_ratio <- prinsmc_sum/9
+prinsmc_resitual <- 0.04223912 # Root Mean Square Off-Diagonal Residuals, jääkkorrelatsioon
+prinsmc_partial <- 0.06840155 #R oot Mean Square Off-Diagonal Partials, osakorrelatsioon
+
+
+prinsmc_sum1 <- 1.595021 # Final Communality Estimates, summaarne kirjeldatus
+prinsmc_ratio1 <- prinsmc_sum1/6
+prinsmc_resitual1 <- 0.04774345 # Root Mean Square Off-Diagonal Residuals, jääkkorrelatsioon
+prinsmc_partial1 <- 0.07599523 #R oot Mean Square Off-Diagonal Partials, osakorrelatsioon
+prinsmc_sum2 <- 1.497302 # Final Communality Estimates, summaarne kirjeldatus
+prinsmc_ratio2 <- prinsmc_sum2/6
+prinsmc_resitual2 <- 0.04850351 # Root Mean Square Off-Diagonal Residuals, jääkkorrelatsioon
+prinsmc_partial2 <- 0.06531269 #R oot Mean Square Off-Diagonal Partials, osakorrelatsioon
+
+
+prinitmax_a <- read.table("prinitmaxa.txt")
+prinitmax_h <- read.table("prinitmaxh.txt")
+tab[,13] <- prinitmax_a[,1]
+tab[,14] <- prinitmax_a[,2]
+tab[,15] <- prinitmax_a[,3]
+tab[,16] <- t(prinitmax_h)[,1]
+prinitmax_sum <- 3.557462 # Final Communality Estimates, summaarne kirjeldatus
+prinitmax_ratio <- prinitmax_sum/9
+prinitmax_resitual <- 0.03381370 # Root Mean Square Off-Diagonal Residuals, jääkkorrelatsioon
+prinitmax_partial <- 0.05299044 #R oot Mean Square Off-Diagonal Partials, osakorrelatsioon
+
+
+prinitmax_sum1 <- 2.455525 # Final Communality Estimates, summaarne kirjeldatus
+prinitmax_ratio1 <- prinitmax_sum1/6
+prinitmax_resitual1 <- 0.00352028 # Root Mean Square Off-Diagonal Residuals, jääkkorrelatsioon
+prinitmax_partial1 <- 0.00697178 #R oot Mean Square Off-Diagonal Partials, osakorrelatsioon
+prinitmax_sum2 <- 2.216158 # Final Communality Estimates, summaarne kirjeldatus
+prinitmax_ratio2 <- prinitmax_sum2/6
+prinitmax_resitual2 <- 0.00115489 # Root Mean Square Off-Diagonal Residuals, jääkkorrelatsioon
+prinitmax_partial2 <- 0.00174658 #R oot Mean Square Off-Diagonal Partials, osakorrelatsioon
+
+prinitsmc_a <- read.table("prinitsmca.txt")
+prinitsmc_h <- read.table("prinitsmch.txt")
+tab[,17] <- prinitsmc_a[,1]
+tab[,18] <- prinitsmc_a[,2]
+tab[,19] <- prinitsmc_a[,3]
+tab[,20] <- t(prinitsmc_h)[,1]
+prinitsmc_sum <- 3.557587 # Final Communality Estimates, summaarne kirjeldatus
+prinitsmc_ratio <- prinitsmc_sum/9
+prinitsmc_resitual <- 0.03381271 # Root Mean Square Off-Diagonal Residuals, jääkkorrelatsioon
+prinitsmc_partial <- 0.05306920 #R oot Mean Square Off-Diagonal Partials, osakorrelatsioon
+
+
+prinitsmc_sum1 <- 2.455453 # Final Communality Estimates, summaarne kirjeldatus
+prinitsmc_ratio1 <- prinitsmc_sum1/6
+prinitsmc_resitual1 <- 0.00352644 # Root Mean Square Off-Diagonal Residuals, jääkkorrelatsioon
+prinitsmc_partial1 <- 0.00698866 #R oot Mean Square Off-Diagonal Partials, osakorrelatsioon
+prinitsmc_sum2 <- 2.215641 # Final Communality Estimates, summaarne kirjeldatus
+prinitsmc_ratio2 <- prinitsmc_sum2/6
+prinitsmc_resitual2 <- 0.00117968 # Root Mean Square Off-Diagonal Residuals, jääkkorrelatsioon
+prinitsmc_partial2 <- 0.00178546 #R oot Mean Square Off-Diagonal Partials, osakorrelatsioon
+```
+
+
+```{r, echo=FALSE,eval=FALSE}
+library(tsfa)
+setwd("C:\\Users\\Anti\\Desktop\\sas\\tables")
+#tab <- matrix(NA, ncol=4, nrow=9)
+fit = estTSFmodel(ts(result_data[,4:12]), 3)
+tsfa_a <- read.table("tsfaa.txt")
+tsfa_h <- read.table("tsfah.txt")
+tsfa_h <- 1-tsfa_h 
+tab[,21] <- -tsfa_a[,1]
+tab[,22] <- tsfa_a[,2]
+tab[,23] <- tsfa_a[,3]
+tab[,24] <- t(tsfa_h)[,1]
+
+colnames(tab) <- c("PK1", "PK2", "PK3", "h^2",
+                   "PF1max", "PF2max", "PF3max", "h^2",
+                   "PF1smc", "PF2smc", "PF3smc", "h^2",
+                   "PFit1max", "PFit2max", "PFit3max", "h^2",
+                   "PFit1smc", "PFit2smc", "PFit3smc", "h^2",
+                   "TSFA1", "TSFA2", "TSFA3", "h^2")
+rownames(tab) <- names(result_data)[4:12]
+knitr::kable(round(tab,3))
+
+new_table <- cbind(apply(tab, 1, function(x){x[c(1,5,9,13,17,21)]}))
+barplot(new_table, beside=T, main="Faktor 1 faktorkaalud", las=2)
+
+new_table <- cbind(apply(tab, 1, function(x){x[c(2,6,10,14,18,22)]}))
+barplot(new_table, beside=T, main="Faktor 2 faktorkaalud", las=2)
+
+new_table <- cbind(apply(tab, 1, function(x){x[c(3,7,11,15,19,23)]}))
+barplot(new_table, beside=T, main="Faktor 3 faktorkaalud", las=2)
+
+new_table <- cbind(apply(tab, 1, function(x){x[c(4,8,12,16,20,24)]}))
+barplot(new_table, beside=T, main="Kommunaliteedid", las=2)
+
+#tab2 <- cbind(rbind(prinone_sum, prinmax_sum, prinsmc_sum, prinitmax_sum, prinitsmc_sum),
+#              rbind(prinone_ratio, prinmax_ratio, prinsmc_ratio, prinitmax_ratio, prinitsmc_ratio),
+#              rbind(prinone_resitual, prinmax_resitual, prinsmc_resitual, prinitmax_resitual, prinitsmc_resitual))
+
+barplot(cbind(prinone_sum, prinmax_sum, prinsmc_sum, prinitmax_sum, prinitsmc_sum),
+        las=2, main="Summaarne kirjeldatus")
+
+barplot(cbind(prinone_resitual, prinmax_resitual, prinsmc_resitual, prinitmax_resitual, prinitsmc_resitual), las=2, main="RMS jääkkorrelatsioon")
+
+barplot(cbind(prinone_partial, prinmax_partial, prinsmc_partial, prinitmax_partial, prinitsmc_partial), las=2, main="RMS osakorrelatsioon")
+
+tsfastat <- read.table("tsfastat.txt", header=T)
+stat_tab <- t(tsfastat)
+colnames(stat_tab) <- c("TSFA stats")
+knitr::kable(round(stat_tab,3))
+
+```
+
+
+
+
+```{r, echo=FALSE}
+setwd("C:\\Users\\Anti\\Desktop\\sas\\tables")
+tab <- matrix(NA, ncol=24, nrow=6)
+
+
+prinone_a <- read.table("prinonea2.txt")
+prinone_h <- read.table("prinoneh2.txt")
+tab[,1] <- prinone_a[,1]
+tab[,2] <- prinone_a[,2]
+tab[,3] <- prinone_a[,3]
+tab[,4] <- t(prinone_h)[,1]
+
+prinmax_a <- read.table("prinmaxa2.txt")
+prinmax_h <- read.table("prinmaxh2.txt")
+tab[,9] <- prinmax_a[,1]
+tab[,10] <- prinmax_a[,2]
+tab[,11] <- prinmax_a[,3]
+tab[,12] <- t(prinmax_h)[,1]
+
+
+prinsmc_a <- read.table("prinsmca2.txt")
+prinsmc_h <- read.table("prinsmch2.txt")
+tab[,5] <- prinsmc_a[,1]
+tab[,6] <- prinsmc_a[,2]
+tab[,7] <- prinsmc_a[,3]
+tab[,8] <- t(prinsmc_h)[,1]
+
+
+
+prinitmax_a <- read.table("prinitmaxa2.txt")
+prinitmax_h <- read.table("prinitmaxh2.txt")
+tab[,13] <- prinitmax_a[,1]
+tab[,14] <- prinitmax_a[,2]
+tab[,15] <- prinitmax_a[,3]
+tab[,16] <- t(prinitmax_h)[,1]
+
+
+prinitsmc_a <- read.table("prinitsmca2.txt")
+prinitsmc_h <- read.table("prinitsmch2.txt")
+tab[,17] <- prinitsmc_a[,1]
+tab[,18] <- prinitsmc_a[,2]
+tab[,19] <- prinitsmc_a[,3]
+tab[,20] <- t(prinitsmc_h)[,1]
+```
+
+
+
+
+```{r, echo=FALSE}
+library(tsfa)
+setwd("C:\\Users\\Anti\\Desktop\\sas\\tables")
+#tab <- matrix(NA, ncol=4, nrow=9)
+fit = estTSFmodel(ts(result_data[c(1,2,3,10,11,12)]), 3)
+tsfa_a <- read.table("tsfaa2.txt")
+tsfa_h <- read.table("tsfah2.txt")
+tsfa_h <- 1-tsfa_h 
+tab[,21] <- tsfa_a[,1]
+tab[,22] <- tsfa_a[,2]
+tab[,23] <- tsfa_a[,3]
+tab[,24] <- t(tsfa_h)[,1]
+
+colnames(tab) <- c("PK1", "PK2", "PK3", "h^2",
+                   "PF1max", "PF2max", "PF3max", "h^2",
+                   "PF1smc", "PF2smc", "PF3smc", "h^2",
+                   "PFit1max", "PFit2max", "PFit3max", "h^2",
+                   "PFit1smc", "PFit2smc", "PFit3smc", "h^2",
+                   "TSFA1", "TSFA2", "TSFA3", "h^2")
+rownames(tab) <- names(result_data)[c(1,2,3,10,11,12)]
+knitr::kable(round(tab,3))
+par(mfrow=c(1,2))
+new_table <- cbind(apply(tab, 1, function(x){x[c(1,5,9,13,17,21)]}))
+barplot(new_table, beside=T, main="Faktor 1 faktorkaalud", las=2)
+
+new_table <- cbind(apply(tab, 1, function(x){x[c(2,6,10,14,18,22)]}))
+barplot(new_table, beside=T, main="Faktor 2 faktorkaalud", las=2)
+
+new_table <- cbind(apply(tab, 1, function(x){x[c(3,7,11,15,19,23)]}))
+barplot(new_table, beside=T, main="Faktor 3 faktorkaalud", las=2)
+
+new_table <- cbind(apply(tab, 1, function(x){x[c(4,8,12,16,20,24)]}))
+barplot(new_table, beside=T, main="Kommunaliteedid", las=2)
+
+#tab2 <- cbind(rbind(prinone_sum, prinmax_sum, prinsmc_sum, prinitmax_sum, prinitsmc_sum),
+#              rbind(prinone_ratio, prinmax_ratio, prinsmc_ratio, prinitmax_ratio, prinitsmc_ratio),
+#              rbind(prinone_resitual, prinmax_resitual, prinsmc_resitual, prinitmax_resitual, prinitsmc_resitual))
+par(mfrow=c(1,3))
+asd1 <- cbind(prinone_sum2, prinmax_sum2, prinsmc_sum2, prinitmax_sum2, prinitsmc_sum2)
+colnames(asd1) <- c("PK", "PFmax", "PFsmc", "PFITmax", "PFITsmc")
+barplot(asd1, las=2, main="Summaarne kirjeldatus")
+
+asd2 <- cbind(prinone_resitual2, prinmax_resitual2, prinsmc_resitual2, prinitmax_resitual2, prinitsmc_resitual2)
+colnames(asd2) <- c("PK", "PFmax", "PFsmc", "PFITmax", "PFITsmc")
+barplot(asd2, las=2, main="RMS jääkkorrelatsioon")
+
+asd3 <-cbind(prinone_partial2, prinmax_partial2, prinsmc_partial2, prinitmax_partial2, prinitsmc_partial2)
+colnames(asd3) <- c("PK", "PFmax", "PFsmc", "PFITmax", "PFITsmc")
+barplot(asd3, las=2, main="RMS osakorrelatsioon")
+
+tsfastat <- read.table("tsfastat2.txt", header=T)
+stat_tab <- t(tsfastat)
+colnames(stat_tab) <- c("TSFA stats")
+knitr::kable(round(stat_tab,3))
+
+```
+
+
+```{r}
+setwd("C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders")
+factor_data <- read.csv("RESULT.csv", header=TRUE)[c("Factor1", "Factor2", "Factor3")]
+setwd("C:\\Users\\Anti\\Desktop\\sas\\tables")
+kaalud <- read.table("kaalud.txt")
+knitr::kable(kaalud)
+plot(ts(factor_data), main="Faktorskoorid")
+
+plot_rocs(factor_data, true_labels, list(ROC=c("Factor1", "Factor2", "Factor3")))
+library(TTR)
+#avg <- as.data.frame(apply(factor_data, 2, function(x){SMA(x, 64)})[64:nrow(factor_data),])
+#plot_rocs(avg, true_labels[64:length(true_labels)], list(Faktor=c("Factor1", "Factor2", "Factor3")))
+
+# setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+# trial_data <- read.csv("test5_targets_3.csv", header=TRUE, sep=" ")
+# setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+# result_data <- read.csv("test5_results_3_all.csv", header=TRUE, sep=" ")
+# setwd("C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders")
+# factor_data <- read.csv("RESULT123.csv", header=TRUE)[c("Factor1", "Factor2", "Factor3")]
+# 
+# true_labels = get_true_labels(trial_data)
+# plot_rocs(result_data, true_labels, method_names)
+# 
+# plot_rocs(factor_data, true_labels[1:11884], list(ROC=c("Factor1", "Factor2", "Factor3")))
+
+classify_results <- function(input_data, method_names) {
+    result = matrix(NA, nrow=nrow(input_data), ncol=length(method_names)*3)
+    overall = matrix(NA, nrow=nrow(input_data), 2)
+    for (j in 1:length(method_names)) {
+        for (i in 1:nrow(input_data)) {
+            method_data <- input_data[i, method_names[[j]]]
+            index <- order(method_data, decreasing=TRUE)
+            result[i,(j-1)*3+index[1]] <- method_data[index[1]]/sum(method_data)+2
+            result[i,(j-1)*3+index[2]] <- method_data[index[2]]/sum(method_data)+1
+            result[i,(j-1)*3+index[3]] <- method_data[index[3]]/sum(method_data)
+            overall[i,] <- c(index[1], method_data[index[1]]/sum(method_data))
+        }
+    }
+    colnames(result) <- unlist(method_names)
+    list(result=as.data.frame(result), overall=overall)
+}
+
+#classified = classify_results(factor_data, list(Faktor=c("Factor1", "Factor2", "Factor3")))
+
+```
+
+
+
