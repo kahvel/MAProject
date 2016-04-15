@@ -8,11 +8,11 @@ output:
 
 ```{r, echo=FALSE}
 knitr::opts_chunk$set(cache=TRUE)
-setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\data")
 trial_data <- read.csv("test5_targets_2.csv", header=TRUE, sep=" ")
-setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\data")
 eeg_data <- read.csv("test5_2.csv", header=TRUE, sep=" ")[c("O1", "O2", "P7", "P8")]
-setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\data")
 frequency_data <- read.csv("test5_freq_2.csv", header=TRUE, sep=" ")
 ```
 
@@ -34,7 +34,7 @@ knitr::kable(tab)
 # EEG signaalist eraldatud tunnused
 
 ```{r, echo=FALSE}
-setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\data")
 result_data <- read.csv("test5_results_2_all.csv", header=TRUE, sep=" ")
 knitr::kable(head(result_data[c("PSDA_sum_f1","PSDA_sum_f2","PSDA_sum_f3",
                                 "CCA_f1","CCA_f2","CCA_f3")]))
@@ -377,7 +377,8 @@ colnames(tab) <- c("PK1", "PK2", "PK3", "h^2",
                    "PFit1smc", "PFit2smc", "PFit3smc", "h^2",
                    "TSFA1", "TSFA2", "TSFA3", "h^2")
 rownames(tab) <- names(result_data)[c(1,2,3,10,11,12)]
-knitr::kable(round(tab,3))
+knitr::kable(round(tab[,1:12],3))
+knitr::kable(round(tab[,13:24],3))
 par(mfrow=c(1,2))
 new_table <- cbind(apply(tab, 1, function(x){x[c(1,5,9,13,17,21)]}))
 barplot(new_table, beside=T, main="Faktor 1 faktorkaalud", las=2)
@@ -428,9 +429,9 @@ library(TTR)
 #avg <- as.data.frame(apply(factor_data, 2, function(x){SMA(x, 64)})[64:nrow(factor_data),])
 #plot_rocs(avg, true_labels[64:length(true_labels)], list(Faktor=c("Factor1", "Factor2", "Factor3")))
 
-# setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+# setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\data")
 # trial_data <- read.csv("test5_targets_3.csv", header=TRUE, sep=" ")
-# setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+# setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\data)
 # result_data <- read.csv("test5_results_3_all.csv", header=TRUE, sep=" ")
 # setwd("C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders")
 # factor_data <- read.csv("RESULT123.csv", header=TRUE)[c("Factor1", "Factor2", "Factor3")]

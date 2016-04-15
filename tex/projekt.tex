@@ -114,7 +114,7 @@ Taoliste küsimuste jaoks vastuse saamiseks proovingi kasutada faktoranalüüsi,
 
 \chapter{Andmete kirjeldus}
 
-Kuna töö eesmärgiks on autori enda kirjutatud AALi täiendamine, siis ka andmed on autori enda kogutud. Andmed ise ning spetsiifilisemad detailid on lisas~\ref{lisa1}.
+Kuna töö eesmärgiks on autori enda kirjutatud AALi täiendamine, siis ka andmed on autori enda kogutud. Andmed ise ning näited andmete kohta on lisas~\ref{andmestik}.
 
 \section{Elektroentsefalogramm}
 
@@ -197,7 +197,7 @@ Teine idee tunnuste ja faktorite arvu valimiseks oli, et valime tunnused, mis is
 
 \section{Faktorlahend}
 
-Faktorlahendi leidmiseks võrreldi nelja meetodit: peakomponentide meetod, peafaktorite meetod, iteratiivne peafaktorite meetod ning aegridade faktoranalüüs, mis põhines suurima tõepära meetodil. Leitud faktorkaalud ning kommunaliteedid on visualiseeritud joonisel~\ref{kaalud} ning tabelina toodud lisas. Jooniselt näeme, et peafaktorite meetodid annavad väga sarnaseid tulemusi. Ka peakomponentide meetod väga palju peafaktorite meetodist ei erine, kuid nagu oodatud, kirjeldab ära suurema tunnuste dispersioonist ning seega omapärad on väiksemad. Suurima tõepära meetod head tulemust ei andnud, iga faktor on seotud peamiselt ainult ühe tunnusega ja seega tunnuseid kokku ei suruta.
+Faktorlahendi leidmiseks võrreldi nelja meetodit: peakomponentide meetod, peafaktorite meetod, iteratiivne peafaktorite meetod ning aegridade faktoranalüüs, mis põhines suurima tõepära meetodil. Leitud faktorkaalud ning kommunaliteedid on visualiseeritud joonisel~\ref{kaalud} ning tabelina toodud lisas~\ref{fk}. Jooniselt näeme, et peafaktorite meetodid annavad väga sarnaseid tulemusi. Ka peakomponentide meetod väga palju peafaktorite meetodist ei erine, kuid nagu oodatud, kirjeldab ära suurema tunnuste dispersioonist ning seega omapärad on väiksemad. Suurima tõepära meetod head tulemust ei andnud, iga faktor on seotud peamiselt ainult ühe tunnusega ja seega tunnuseid kokku ei suruta.
 
 Teised headuse näitajad on toodud joonisel~\ref{head}. Nagu näeme, on peafaktorite meetodi summaarne kirjeldatus hea ning ka teised näitajad on piisavalt väikesed. Peafaktorite meetod, nagu oodatud, on aga saavutanud väga väikesed jääkkorrelatsiooni ja osakorrelatsiooni maatriksi diagonaaliväliste elementide summad. 
 
@@ -264,9 +264,9 @@ Projekti edasi arendamise esimene samm oleks teha parem klassifitseerimise meeto
 Sain antud projekti käigus ideid oma AALi edasi arendamiseks ning loodetavasti viib mõni neist ka hea tulemuseni.
 
 \appendix
-\chapter{Lisa}\label{lisa1}
+\chapter{SAS kood}\label{lisa1}
 
-Andmed ning kõik projekti jaoks kasutatud koodid on kättesaadavad projekti koodirepositooriumist\footnote{https://github.com/kahvel/MAProject}. Järgnevalt on aga toodud näited andmestikust ning kasutatud olulisemad koodi osad
+Kogu kasutatud kood on kättesaadav koodirepositooriumist\footnote{https://github.com/kahvel/MAProject}. Järgnevalt on aga toodud olulisemad koodi osad
 
 \begin{verbatim}
 data data; /* Andmete sisse lugemine */
@@ -308,6 +308,9 @@ proc factor data=data method=prinit priors=smc residuals nfactors=3 maxiter=1000
 var PSDA_sum_f1 PSDA_sum_f2 PSDA_sum_f3 CCA_f1 CCA_f2 CCA_f3;
 run;
 \end{verbatim}
+\chapter{Andmestik}\label{andmestik}
+Kogu andmestik on kättesaadav koodirepositooriumist\footnote{https://github.com/kahvel/MAProject}
+
 Näide EEG signaali andmestiku kohta
 \begin{longtable}[c]{@{}rrrr@{}}
 	\toprule
@@ -365,19 +368,18 @@ Näide juhuslikult genereeritud käskude järjendi kohta ehk millal kasutaja min
 	577 & 1312 & 3\tabularnewline
 	1313 & 2048 & 1\tabularnewline
 	2049 & 2688 & 2\tabularnewline
-	2689 & 3392 & 1\tabularnewline
-	3393 & 5088 & 2\tabularnewline
-	5089 & 5568 & 3\tabularnewline
 	\bottomrule
 \end{longtable}
-\newpage
-Andmete failid (koodirepositooriumis)
-\begin{itemize}
-	\item \texttt{test5\_2.csv} - EEG signaal;
-	\item \texttt{test5\_freq\_2.csv} - kasutatud käskude sagedused;
-	\item \texttt{test5\_targets\_2.csv} - millal kasutaja mingit käsku edastas;
-	\item \texttt{test5\_results\_2\_all.csv} EEG signaalist eraldatud tunnused.
-\end{itemize}
+%Andmete failid (koodirepositooriumis)
+%\begin{itemize}
+%	\item \texttt{test5\_2.csv} - EEG signaal;
+%	\item \texttt{test5\_freq\_2.csv} - kasutatud käskude sagedused;
+%	\item \texttt{test5\_targets\_2.csv} - millal kasutaja mingit käsku edastas;
+%	\item \texttt{test5\_results\_2\_all.csv} EEG signaalist eraldatud tunnused.
+%\end{itemize}
+\chapter{R kood}
+Kogu kasutatud kood on kättesaadav koodirepositooriumist\footnote{https://github.com/kahvel/MAProject}.
+
 Aegridade faktoranalüüsi Ris
 \begin{verbatim}
 library(tsfa)
@@ -415,6 +417,52 @@ dfa.model = list(Z=Z, A="zero", R=R, B=B, U=U, Q=Q, x0=x0, V0=V0)
 cntl.list = list(maxit=50)
 tulemus = MARSS(t(as.matrix(result_data)), model=dfa.model, control=cntl.list)
 \end{verbatim}
+\begin{landscape}
+\chapter{Faktorkaalud ja kommunaliteedid}\label{fk}
+Faktorkaalud ja kommunaliteedid peakomponentide (PK), peafaktorite (PF) ja iteratiivse peafaktorite (PFIT) jaoks
+
+\begin{longtable}[c]{@{}lrrrrrrrrrrrr@{}}
+	\toprule
+	& PK1 & PK2 & PK3 & h\^{}2 & PF1max & PF2max & PF3max & h\^{}2 & PF1smc
+	& PF2smc & PF3smc & h\^{}2\tabularnewline
+	\midrule
+	\endhead
+	PSDA\_sum\_f1 & 0.684 & 0.375 & -0.175 & 0.639 & 0.502 & 0.209 & -0.108
+	& 0.307 & 0.537 & 0.236 & -0.144 & 0.365\tabularnewline
+	PSDA\_sum\_f2 & 0.774 & -0.107 & 0.057 & 0.613 & 0.573 & -0.091 & 0.021
+	& 0.337 & 0.600 & -0.108 & 0.019 & 0.373\tabularnewline
+	PSDA\_sum\_f3 & 0.631 & 0.352 & 0.397 & 0.680 & 0.463 & 0.196 & 0.196 &
+	0.291 & 0.503 & 0.224 & 0.255 & 0.369\tabularnewline
+	CCA\_f1 & -0.079 & 0.716 & -0.480 & 0.750 & -0.045 & 0.376 & -0.213 &
+	0.189 & -0.047 & 0.431 & -0.266 & 0.259\tabularnewline
+	CCA\_f2 & 0.456 & -0.645 & -0.123 & 0.639 & 0.302 & -0.371 & -0.066 &
+	0.234 & 0.322 & -0.434 & -0.094 & 0.301\tabularnewline
+	CCA\_f3 & -0.190 & 0.238 & 0.826 & 0.775 & -0.114 & 0.125 & 0.333 &
+	0.140 & -0.115 & 0.134 & 0.392 & 0.185\tabularnewline
+	\bottomrule
+\end{longtable}
+
+\begin{longtable}[c]{@{}lrrrrrrrrrrrr@{}}
+	\toprule
+	& PFit1max & PFit2max & PFit3max & h\^{}2 & PFit1smc & PFit2smc &
+	PFit3smc & h\^{}2 & TSFA1 & TSFA2 & TSFA3 & h\^{}2\tabularnewline
+	\midrule
+	\endhead
+	PSDA\_sum\_f1 & 0.538 & 0.227 & -0.165 & 0.368 & 0.538 & 0.227 & -0.165
+	& 0.368 & -0.112 & 0.024 & -0.178 & 0.055\tabularnewline
+	PSDA\_sum\_f2 & 0.611 & -0.132 & -0.058 & 0.394 & 0.611 & -0.132 &
+	-0.058 & 0.394 & 1.028 & 0.166 & -0.136 & 0.995\tabularnewline
+	PSDA\_sum\_f3 & 0.599 & 0.222 & 0.347 & 0.528 & 0.598 & 0.222 & 0.347 &
+	0.528 & 0.230 & -0.049 & -1.022 & 0.995\tabularnewline
+	CCA\_f1 & -0.054 & 0.580 & -0.292 & 0.424 & -0.054 & 0.580 & -0.292 &
+	0.424 & -0.060 & 0.985 & -0.145 & 0.995\tabularnewline
+	CCA\_f2 & 0.310 & -0.435 & -0.198 & 0.324 & 0.310 & -0.435 & -0.198 &
+	0.324 & 0.093 & -0.063 & 0.020 & 0.015\tabularnewline
+	CCA\_f3 & -0.094 & 0.090 & 0.400 & 0.177 & -0.094 & 0.090 & 0.400 &
+	0.177 & -0.022 & -0.079 & -0.047 & 0.009\tabularnewline
+	\bottomrule
+\end{longtable}
+\end{landscape}
 
 
 \end{document}
