@@ -11,31 +11,8 @@ def readData(file_name, sep=" "):  # Is there ID???
     return result
 
 
-def getColumn(data, i, row_names):
-    return [data[name][i] for name in row_names]
-
-# class Classifier(object):
-#     def classify(self):
-
-def classifyMaxDifference(column):
-    order = map(lambda x: x[0], sorted(enumerate(column), key=lambda x: -x[1]))
-    return order[0]+1, column[order[0]]-column[order[1]]
-
-def classifyMaxRatio(column):
-    order = map(lambda x: x[0], sorted(enumerate(column), key=lambda x: -x[1]))
-    return order[0]+1, column[order[0]]/sum(column)
-
-def classifyMax(data, row_names, func):
-    classification = []
-    n = len(data[row_names[0]])
-    for i in range(n):
-        column = getColumn(data, i, row_names)
-        prediction, result = func(column)
-        classification.append((i, prediction, result))
-    return classification
-
 def rocLine(classification, trial_data, step=1, sma=0):
-    index = map(lambda x: x[0], sorted(enumerate(classification), key=lambda x: -x[1][2]))
+    index = map(lambda x: x[0], sorted(classification, key=lambda x: -x[2]))
     roc_x = [0.0]
     roc_y = [0.0]
     x_count = 0
@@ -63,17 +40,18 @@ def rocLine(classification, trial_data, step=1, sma=0):
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    trial_data = readData("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg\\test5_targets_2.csv")
+    import classifiers
+    trial_data = readData("..\\data\\test5_targets_2.csv")
 
-    data = readData("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result\\test5_results_2_all.csv")
+    data = readData("..\\data\\test5_results_2_all.csv")
     #predicted = classifyMax(data, ["CCA_f1", "CCA_f2", "CCA_f3"], classifyMaxRatio)
     #column = getColumn(data, 0, ["CCA_f1", "CCA_f2", "CCA_f3"])
-    row_names = ["CCA_f1", "CCA_f2", "CCA_f3"]
-    classification = classifyMax(data, row_names, classifyMaxRatio)
+    col_names = ["CCA_f1", "CCA_f2", "CCA_f3"]
+    classifier = classifiers.ClassifyByRatio(data, col_names)
+    classification = classifier.classify()
     roc_curve = rocLine(classification, trial_data)
     plt.plot(roc_curve[0], roc_curve[1])
     plt.plot((0,1), (0,1))
     plt.show()
 
-#
-# plot(performance(data, "tpr", "fpr"))
+
