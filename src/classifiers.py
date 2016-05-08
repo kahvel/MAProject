@@ -1,9 +1,5 @@
 
 
-def getRow(data, i, row_names):
-    return [data[name][i] for name in row_names]
-
-
 class Classification(object):
     def __init__(self, data, col_names):
         self.data = data
@@ -11,6 +7,9 @@ class Classification(object):
 
     def classify(self):
         raise NotImplementedError("classifyAll not implemented!")
+
+    def classifyByAverage(self, window_length):
+        raise NotImplementedError("classifyByAverage not implemented!")
 
 
 class ComparativeClassification(Classification):
@@ -20,17 +19,30 @@ class ComparativeClassification(Classification):
     def classifyResult(self, row, order):
         raise NotImplementedError("classifyResult not implemented!")
 
-    def classify(self):
+    def getCol(self, i):
+        return [self.data[name][i] for name in self.col_names]
+
+    def classifyData(self, data):
         classification = []
-        n = len(self.data[self.col_names[0]])
+        n = len(data[self.col_names[0]])
         for i in range(n):
-            row = getRow(self.data, i, self.col_names)
+            row = self.getCol(i)
             prediction, result = self.classifyResult(row, self.orderResult(row))
             classification.append((i, prediction, result))
         return classification
 
+    def classify(self):
+        return self.classifyData(self.data)
+
     def orderResult(self, row):
         return map(lambda x: x[0], sorted(enumerate(row), key=lambda x: -x[1]))
+
+    def classifyByAverage(self, window_length):
+        classification = {}
+        for i, name in enumerate(self.col_names):
+            classifier = ThresholdClassification(self.data, self.col_names, i)
+            classification[name] = map(lambda x: x[2], classifier.classifyByAverage(window_length))
+        return self.classifyData(classification)
 
 
 class ClassifyByRatio(ComparativeClassification):
@@ -64,12 +76,11 @@ class ThresholdClassification(Classification):
         results = []
         for i in range(len(normal_classification)):
             results.append(normal_classification[i])
-            if len(results) >= window_length:
-                if len(average_classification) == 0:
-                    average_classification.append((i-window_length+1, self.target_index+1, sum(map(lambda x: x[2], results))/window_length))
-                else:
-                    res = average_classification[-1][2]+(-deleted_result+results[-1][2])/window_length
-                    average_classification.append((i-window_length+1, self.target_index+1, res))
+            if len(results) <= window_length:
+                average_classification.append((i-window_length+1, self.target_index+1, sum(map(lambda x: x[2], results))/len(results)))
+            else:
                 deleted_result = results[0][2]
                 del results[0]
+                res = average_classification[-1][2]+(-deleted_result+results[-1][2])/window_length
+                average_classification.append((i-window_length+1, self.target_index+1, res))
         return average_classification

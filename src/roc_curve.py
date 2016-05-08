@@ -1,4 +1,12 @@
 
+group_names = ["CCA", "PSDA_h1", "PSDA_h2", "PSDA_sum"]
+col_names = {
+    "CCA": ["CCA_f1", "CCA_f2", "CCA_f3"],
+    "PSDA_h1": ["PSDA_h1_f1", "PSDA_h1_f2", "PSDA_h1_f3"],
+    "PSDA_h2": ["PSDA_h2_f1", "PSDA_h2_f2", "PSDA_h2_f3"],
+    "PSDA_sum": ["PSDA_sum_f1", "PSDA_sum_f2", "PSDA_sum_f3"]
+}
+
 
 def readData(file_name, sep=" "):  # Is there ID???
     content = open(file_name).readlines()
@@ -45,28 +53,73 @@ def getTrueLabels(trial_data, length=256, step=1, average=1):
     return true_labels
 
 
+def makeDataNonNegative(data):
+    for group in col_names:
+        mins = []
+        for name in col_names[group]:
+            mins.append(min(data[name]))
+        for name in col_names[group]:
+            data[name] = list(map(lambda x: x-min(mins), data[name]))
+    return data
+
+
+def binariseClassification(classification, target):
+    pass
+
+
+def buildDataMatrix(data):
+    average = [10, 100, 1000]
+    x = []
+    for name in group_names:
+        for avg in average:
+            classification = classifiers.ThresholdClassification(data, col_names[name], 0).classifyByAverage(avg)
+            x.append(map(lambda x: x[2], classification))
+            # roc_curve = rocLine(classification, true_labels)
+            # plt.plot(roc_curve[0], roc_curve[1])
+    x = np.array(x).transpose()
+    return x
+
+
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import classifiers
-    true_labels = getTrueLabels(readData("..\\data\\test5_targets_1.csv"))
+    from sklearn import qda, lda
+    import numpy as np
+    model = qda.QDA()
+    # model = lda.LDA()
+    train_labels = getTrueLabels(readData("..\\data\\test5_targets_1.csv"))
     data = readData("..\\data\\test5_results_1_all.csv")
-    col_names = ["CCA_f1", "CCA_f2", "CCA_f3"]
-    # roc_curve = rocLine(classifiers.ClassifyByRatio(data, col_names).classify(), true_labels)
+    data = makeDataNonNegative(data)
+    # roc_curve = rocLine(classifiers.ClassifyByRatio(data, col_names["CCA"]).classify(), true_labels)
     # plt.plot(roc_curve[0], roc_curve[1])
-    # roc_curve = rocLine(classifiers.ClassifyByDifference(data, col_names).classify(), true_labels)
+    # roc_curve = rocLine(classifiers.ClassifyByDifference(data, col_names["CCA"]).classify(), true_labels)
     # plt.plot(roc_curve[0], roc_curve[1])
-    roc_curve = rocLine(classifiers.ThresholdClassification(data, col_names, 0).classify(), true_labels)
-    plt.plot(roc_curve[0], roc_curve[1])
-    roc_curve = rocLine(classifiers.ThresholdClassification(data, col_names, 0).classifyByAverage(2000), true_labels[1999:])
-    plt.plot(roc_curve[0], roc_curve[1])
-    # roc_curve = rocLine(classifiers.ThresholdClassification(data, col_names, 0).averageClassifier(3000), true_labels[2999:])
+    # roc_curve = rocLine(classifiers.ClassifyByRatio(data, col_names["CCA"]).classifyByAverage(1000), true_labels[999:])
     # plt.plot(roc_curve[0], roc_curve[1])
-    # roc_curve = rocLine(classifiers.ThresholdClassification(data, col_names, 0).averageClassifier(4000), true_labels[3999:])
+    # roc_curve = rocLine(classifiers.ClassifyByDifference(data, col_names["CCA"]).classifyByAverage(1000), true_labels[999:])
     # plt.plot(roc_curve[0], roc_curve[1])
-    # roc_curve = rocLine(classifiers.ThresholdClassification(data, col_names, 1).classify(), true_labels)
+    # roc_curve = rocLine(classifiers.ThresholdClassification(data, col_names["CCA"], 0).classify(), true_labels)
     # plt.plot(roc_curve[0], roc_curve[1])
-    # roc_curve = rocLine(classifiers.ThresholdClassification(data, col_names, 2).classify(), true_labels)
+    # roc_curve = rocLine(classifiers.ThresholdClassification(data, col_names["CCA"], 0).classifyByAverage(2000), true_labels[1999:])
     # plt.plot(roc_curve[0], roc_curve[1])
+
+    train_data = buildDataMatrix(data)
+    model.fit(train_data, train_labels)
+    print model.score(train_data, train_labels)
+
+    test_data = readData("..\\data\\test5_results_3_all.csv")
+    test_data = makeDataNonNegative(test_data)
+    test_data = buildDataMatrix(test_data)
+    test_labels = getTrueLabels(readData("..\\data\\test5_targets_3.csv"))
+
+    print model.score(test_data, test_labels)
+    decision = model.decision_function(test_data)
+    print decision.shape
+    for i in [0, 1, 2]:
+        classification = classifiers.ThresholdClassification(decision.transpose(), [0, 1, 2], i).classifyByAverage(1)
+        roc_curve = rocLine(classification, test_labels)
+        plt.plot(roc_curve[0], roc_curve[1])
+
     plt.plot((0,1), (0,1))
     plt.show()
 
