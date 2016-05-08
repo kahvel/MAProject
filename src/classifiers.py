@@ -11,16 +11,22 @@ class Classification(object):
     def classifyByAverage(self, window_length):
         raise NotImplementedError("classifyByAverage not implemented!")
 
+    def orderResult(self, row):
+        return map(lambda x: x[0], sorted(enumerate(row), key=lambda x: -x[1]))
+
+    def getCol(self, i):
+        return [self.data[name][i] for name in self.col_names]
+
+    def calculateResult(self, row, order):
+        raise NotImplementedError("calculateResult not implemented!")
+
 
 class ComparativeClassification(Classification):
     def __init__(self, data, col_names):
         Classification.__init__(self, data, col_names)
 
     def classifyResult(self, row, order):
-        raise NotImplementedError("classifyResult not implemented!")
-
-    def getCol(self, i):
-        return [self.data[name][i] for name in self.col_names]
+        return order[0]+1, self.calculateResult(row, order)
 
     def classifyData(self, data):
         classification = []
@@ -34,9 +40,6 @@ class ComparativeClassification(Classification):
     def classify(self):
         return self.classifyData(self.data)
 
-    def orderResult(self, row):
-        return map(lambda x: x[0], sorted(enumerate(row), key=lambda x: -x[1]))
-
     def classifyByAverage(self, window_length):
         classification = {}
         for i, name in enumerate(self.col_names):
@@ -45,20 +48,24 @@ class ComparativeClassification(Classification):
         return self.classifyData(classification)
 
 
-class ClassifyByRatio(ComparativeClassification):
+class RatioCalculator(object):
+    def calculateResult(self, row, order):
+        return row[order[0]]/sum(row)
+
+
+class DifferenceCalculator:
+    def calculateResult(self, row, order):
+        return row[order[0]]-row[order[1]]
+
+
+class ClassifyByRatio(RatioCalculator, ComparativeClassification):
     def __init__(self, data, col_names):
         ComparativeClassification.__init__(self, data, col_names)
 
-    def classifyResult(self, row, order):
-        return order[0]+1, row[order[0]]/sum(row)
 
-
-class ClassifyByDifference(ComparativeClassification):
+class ClassifyByDifference(DifferenceCalculator, ComparativeClassification):
     def __init__(self, data, col_names):
         ComparativeClassification.__init__(self, data, col_names)
-
-    def classifyResult(self, row, order):
-        return order[0]+1, row[order[0]]-row[order[1]]
 
 
 class ThresholdClassification(Classification):
@@ -84,3 +91,26 @@ class ThresholdClassification(Classification):
                 res = average_classification[-1][2]+(-deleted_result+results[-1][2])/window_length
                 average_classification.append((i-window_length+1, self.target_index+1, res))
         return average_classification
+
+
+class AbstractThresholdClassification(ThresholdClassification):
+    def __init__(self, data, col_names, target_index):
+        ThresholdClassification.__init__(self, data, col_names, target_index)
+
+    def classify(self):
+        classification = []
+        n = len(self.data[self.col_names[0]])
+        for i in range(n):
+            row = self.getCol(i)
+            classification.append((i, self.target_index+1, self.calculateResult(row, self.orderResult(row))))
+        return classification
+
+
+class ThresholdRatioClassification(RatioCalculator, AbstractThresholdClassification):
+    def __init__(self, data, col_names, target_index):
+        AbstractThresholdClassification.__init__(self, data, col_names, target_index)
+
+
+class ThresholdDifferenceClassification(DifferenceCalculator, AbstractThresholdClassification):
+    def __init__(self, data, col_names, target_index):
+        AbstractThresholdClassification.__init__(self, data, col_names, target_index)
