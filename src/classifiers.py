@@ -56,4 +56,20 @@ class ThresholdClassification(Classification):
 
     def classify(self):
         data = self.data[self.col_names[self.target_index]]
-        return [(i, self.target_index, data[i]) for i in range(len(data))]
+        return [(i, self.target_index+1, data[i]) for i in range(len(data))]
+
+    def classifyByAverage(self, window_length):
+        normal_classification = self.classify()
+        average_classification = []
+        results = []
+        for i in range(len(normal_classification)):
+            results.append(normal_classification[i])
+            if len(results) >= window_length:
+                if len(average_classification) == 0:
+                    average_classification.append((i-window_length+1, self.target_index+1, sum(map(lambda x: x[2], results))/window_length))
+                else:
+                    res = average_classification[-1][2]+(-deleted_result+results[-1][2])/window_length
+                    average_classification.append((i-window_length+1, self.target_index+1, res))
+                deleted_result = results[0][2]
+                del results[0]
+        return average_classification
