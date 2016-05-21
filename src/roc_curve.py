@@ -59,10 +59,14 @@ def getTrueLabels(trial_data, length=256, step=1, average=1):
 def makeDataNonNegative(data):
     for group in col_names:
         mins = []
+        maxs = []
         for name in col_names[group]:
             mins.append(min(data[name]))
+            maxs.append(max(data[name]))
+        minimum = min(mins)
+        maximum = max(maxs)
         for name in col_names[group]:
-            data[name] = list(map(lambda x: x-min(mins), data[name]))
+            data[name] = list(map(lambda x: (x-minimum)/maximum, data[name]))
     return data
 
 
@@ -98,6 +102,18 @@ def removePacketsAfterChange(data, labels, label_data, n_packets, length=256, st
     return new_data, new_labels
 
 
+def differenceTimeSeries(data):
+    result = {}
+    for group_name in group_names:
+        for col_name in col_names[group_name]:
+            row = []
+            for i in range(1, len(data[col_name])):
+                row.append(data[col_name][i]-data[col_name][i-1])
+                # result.append(map(lambda x: x[1]-x[0], zip(data[i], data[i-1])))
+            result[col_name] = row
+    return result
+
+
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import classifiers
@@ -105,12 +121,9 @@ if __name__ == '__main__':
     from sklearn.tree import DecisionTreeClassifier
     from sklearn.ensemble import AdaBoostClassifier, BaggingClassifier, RandomForestClassifier
     from sklearn.svm import LinearSVC, SVC
+    from sklearn.neural_network import BernoulliRBM
     import numpy as np
 
-    train_label_data = readData("..\\data\\test5_targets_2.csv")
-    train_labels = getTrueLabels(train_label_data)
-    raw_train_data = readData("..\\data\\test5_results_2_all.csv")
-    raw_train_data = makeDataNonNegative(raw_train_data)
     # roc_curve = rocLine(classifiers.ClassifyByRatio(data, col_names["CCA"]).classify(), true_labels)
     # plt.plot(roc_curve[0], roc_curve[1])
     # roc_curve = rocLine(classifiers.ClassifyByDifference(data, col_names["CCA"]).classify(), true_labels)
@@ -119,10 +132,6 @@ if __name__ == '__main__':
     # plt.plot(roc_curve[0], roc_curve[1])
     # roc_curve = rocLine(classifiers.ThresholdRatioClassification(data, col_names["CCA"], 0).classifyByAverage(1), train_labels[:])
     # plt.plot(roc_curve[0], roc_curve[1])
-    # roc_curve = rocLine(classifiers.ThresholdRatioClassification(data, col_names["CCA"], 1).classifyByAverage(1), train_labels[:])
-    # plt.plot(roc_curve[0], roc_curve[1])
-    # roc_curve = rocLine(classifiers.ThresholdRatioClassification(data, col_names["CCA"], 2).classifyByAverage(1), train_labels[:])
-    # plt.plot(roc_curve[0], roc_curve[1])
     # roc_curve = rocLine(classifiers.ThresholdClassification(data, col_names["CCA"], 0).classify(), true_labels)
     # plt.plot(roc_curve[0], roc_curve[1])
     # roc_curve = rocLine(classifiers.ThresholdClassification(data, col_names["CCA"], 0).classifyByAverage(2000), true_labels[1999:])
@@ -130,18 +139,35 @@ if __name__ == '__main__':
 
     # model = qda.QDA()
 
+    multiclass = False
+    difference = True
+
+    train_label_data = readData("..\\data\\test5_targets_2.csv")
+    train_labels = getTrueLabels(train_label_data)
+    raw_train_data = readData("..\\data\\test5_results_2_all.csv")
+    raw_train_data = makeDataNonNegative(raw_train_data)
+
     raw_test_data = readData("..\\data\\test5_results_3_all.csv")
     raw_test_data = makeDataNonNegative(raw_test_data)
     test_label_data = readData("..\\data\\test5_targets_3.csv")
     test_labels = getTrueLabels(test_label_data)
 
-    multiclass = False
+    if difference:
+        raw_train_data = differenceTimeSeries(raw_train_data)
+        raw_test_data = differenceTimeSeries(raw_test_data)
+        del train_labels[0]
+        del test_labels[0]
+
+    print len(raw_train_data), len(raw_train_data["CCA_f1"])
+    print len(raw_test_data), len(raw_test_data["CCA_f1"])
+    print len(train_labels)
+    print len(test_labels)
 
     if multiclass:
         # model = BaggingClassifier(base_estimator=DecisionTreeClassifier(max_depth=1), n_estimators=1000, max_samples=0.2, max_features=1.0)
         # model = AdaBoostClassifier(n_estimators=1000, learning_rate=0.1, base_estimator=DecisionTreeClassifier(max_depth=1))
-        # model = RandomForestClassifier(n_estimators=1000, max_depth=2)
-        model = LinearSVC()
+        model = RandomForestClassifier(n_estimators=10000, max_depth=2)
+        # model = LinearSVC()
 
         model.classes_ = [1, 2, 3]
         test_data = map(list, buildDataMatrix(raw_test_data, 0))
@@ -163,14 +189,10 @@ if __name__ == '__main__':
         print model.score(train_data, train_1_labels)
         print model.score(test_data, test_1_labels)
 
-        decision = model.decision_function(test_data).transpose()
+        # decision = model.decision_function(test_data).transpose()
 
-        # decision = model.predict_proba(test_data).transpose()
-        classification = classifiers.ClassifyByDifference(decision, [0, 1, 2]).classifyByAverage(1)
-
-        print decision
-        print classification[:6]
-        print test_1_labels[:6]
+        decision = model.predict_proba(test_data).transpose()
+        classification = classifiers.ClassifyByRatio(decision, [0, 1, 2]).classifyByAverage(1)
 
         roc_curve = rocLine(classification, test_1_labels)
         plt.plot(roc_curve[0], roc_curve[1])
@@ -179,9 +201,10 @@ if __name__ == '__main__':
             # model = BaggingClassifier(base_estimator=DecisionTreeClassifier(max_depth=1), n_estimators=1000, max_samples=0.2, max_features=1.0)
             # model = AdaBoostClassifier(n_estimators=1000, learning_rate=0.1, base_estimator=DecisionTreeClassifier(max_depth=1))
             # model = RandomForestClassifier(n_estimators=1000, max_depth=1)
-            # model = LinearSVC()
-            # model = SVC(C=0.1)
-            model = BaggingClassifier(base_estimator=SVC(), n_estimators=100, max_samples=0.2, max_features=1.0)
+            model = LinearSVC()
+            # model = SVC(C=1.0)
+            # model = BaggingClassifier(base_estimator=LinearSVC(), n_estimators=100, max_samples=0.2, max_features=1.0)
+            pre_model = BernoulliRBM(random_state=99)
 
             model.classes_ = [1, 0]
 
@@ -192,8 +215,11 @@ if __name__ == '__main__':
 
             print test_data.shape
 
-            test_data, test_1_labels = removePacketsAfterChange(test_data, test_1_labels, test_label_data, 200)
-            train_data, train_1_labels = removePacketsAfterChange(train_data, train_1_labels, train_label_data, 200)
+            test_data, test_1_labels = removePacketsAfterChange(test_data, test_1_labels, test_label_data, 100)
+            train_data, train_1_labels = removePacketsAfterChange(train_data, train_1_labels, train_label_data, 100)
+
+            train_data = pre_model.fit_transform(train_data, train_1_labels)
+            test_data = pre_model.transform(test_data)
 
             model.fit(train_data, train_1_labels)
             print model.score(train_data, train_1_labels)
@@ -203,10 +229,6 @@ if __name__ == '__main__':
             # decision = model.predict_proba(test_data).transpose()  # everything except svm
 
             classification = classifiers.ThresholdClassification(decision, [0], 0).classifyByAverage(1)
-
-            print decision
-            print classification[:6]
-            print test_1_labels[:6]
 
             # decision = map(lambda x: (x[0], 1, x[1]), enumerate(decision.transpose()[0]))
             roc_curve = rocLine(classification, test_1_labels)
