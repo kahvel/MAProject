@@ -278,33 +278,45 @@ if __name__ == '__main__':
             plt.plot(fpr, tpr)
     else:
         for target_index in [0,1,2]:
-            for i, n_estimators in enumerate([1000]):#enumerate([10**(r) for r in range(-3, 1)]):
-                # model = BaggingClassifier(base_estimator=DecisionTreeClassifier(max_depth=1), n_estimators=1000, max_samples=0.2, max_features=1.0)
-                # model = AdaBoostClassifier(n_estimators=n_estimators, learning_rate=0.1, base_estimator=DecisionTreeClassifier(max_depth=1), random_state=99)
-                model = RandomForestClassifier(n_estimators=1000, max_depth=1, random_state=99)#, class_weight={True: 0.001, False: 0.9999}
+            for j, n_estimators in enumerate([1000]):#enumerate([10**(r) for r in range(-3, 1)]):
+                # model = BaggingClassifier(base_estimator=DecisionTreeClassifier(max_depth=1), n_estimators=1000, max_samples=0.2, max_features=0.2)
+                model = AdaBoostClassifier(n_estimators=n_estimators, learning_rate=0.1, base_estimator=DecisionTreeClassifier(max_depth=1), random_state=99)
+                # model = RandomForestClassifier(n_estimators=1000, max_depth=1, random_state=99)#, class_weight={True: 0.001, False: 0.9999}
                 # model = GradientBoostingClassifier(n_estimators=1000, max_depth=3, random_state=99)
                 # svm = LinearSVC(C=1)
                 # # svm = LDA()
                 # svm = LogisticRegression()
                 # # model = SVC(C=1.0)
                 # # model = BaggingClassifier(base_estimator=LinearSVC(), n_estimators=100, max_samples=0.2, max_features=1.0)
-                # pre_model = BernoulliRBM(learning_rate=0.1, n_components=10, n_iter=20)
-
+                # pre_model = BernoulliRBM(learning_rate=0.001, n_components=1, n_iter=200)
+                #
                 # svm.classes_ = [True, False]
-
+                #
                 # pipeline = Pipeline(steps=[("rbm", pre_model), ("svm", svm)])
                 # bagging = BaggingClassifier(base_estimator=pipeline, n_estimators=5, max_samples=0.2, max_features=1.0)
                 # model = AdaBoostClassifier(n_estimators=5, learning_rate=0.1, base_estimator=svm)
-                # model = bagging
+                # model = pipeline
                 # # model = GaussianProcess()
                 # # model = BaggingClassifier(base_estimator=gaussian, n_estimators=10, max_samples=1.0, max_features=1.0)
 
                 model.classes_ = [True, False]
 
-                test_data = buildDataMatrix(raw_test_data, target_index)
                 test_1_labels = binariseLabels(test_labels, target_index+1)
-                train_data = buildDataMatrix(raw_train_data, target_index)
                 train_1_labels = binariseLabels(train_labels, target_index+1)
+
+                positive_train_labels = [i for i in range(len(train_1_labels)) if train_1_labels[i]]
+                # positive_test_labels = [i for i in range(len(test_1_labels)) if test_1_labels[i]]
+                negative_train_labels = list(np.random.choice([i for i in range(len(train_1_labels)) if i not in positive_train_labels], replace=False, size=len(positive_train_labels)))
+                # negative_test_labels = list(np.random.choice([i for i in range(len(test_1_labels)) if i not in positive_test_labels], replace=False, size=len(positive_test_labels)))
+
+                # test_1_labels = [test_1_labels[i] for i in positive_test_labels + negative_test_labels]
+                train_1_labels = [train_1_labels[i] for i in positive_train_labels + negative_train_labels]
+
+                test_data = buildDataMatrix(raw_test_data, target_index)
+                train_data = buildDataMatrix(raw_train_data, target_index)
+
+                # test_data = [test_data[i] for i in positive_test_labels + negative_test_labels]
+                train_data = [train_data[i] for i in positive_train_labels + negative_train_labels]
 
                 test_data, test_1_labels = removePacketsAfterChange(test_data, test_1_labels, test_label_data, 256)
                 train_data, train_1_labels = removePacketsAfterChange(train_data, train_1_labels, train_label_data, 256)
@@ -334,7 +346,7 @@ if __name__ == '__main__':
                 # classification = classifiers.ThresholdClassification(decision, [0], 0).classifyByAverage(1)
                 # pred = model.predict(test_data)
                 # print all(pred) or not any(pred), pred[0]
-                perfect_fpr = np.where(fpr <= 0)[0]
+                perfect_fpr = np.where(fpr <= 0.01)[0]
                 if len(perfect_fpr) > 0:
                     fpr_index = perfect_fpr[-1]
                     pos_threshold = threshold[fpr_index]
@@ -349,7 +361,7 @@ if __name__ == '__main__':
 
                 # # decision = map(lambda x: (x[0], 1, x[1]), enumerate(decision.transpose()[0]))
                 # roc_curve = rocLine(classification, test_1_labels)
-                plt.subplot(2, 2, 1+i)
+                plt.subplot(2, 2, 1+j)
                 # plt.plot(roc_curve[0], roc_curve[1])
                 plt.plot(fpr, tpr)
                 plt.xlabel('False Positive Rate')
