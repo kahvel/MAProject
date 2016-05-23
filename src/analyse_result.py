@@ -1,10 +1,13 @@
 from sklearn.externals import joblib
 from sklearn import metrics
-from roc_curve import readData, getTrueLabels, normaliseAndScale, buildDataMatrix, binariseLabels, removePacketsAfterChange
+from main import readData, getTrueLabels, normaliseAndScale, buildDataMatrix, binariseLabels, removePacketsAfterChange
 import numpy as np
+import pickle
 
 target_index = 0
-model = joblib.load('../pickle/boost_1000_1/boost1.pkl')
+# model = joblib.load('../pickle/boost_1000_1/boost1.pkl')
+model = pickle.load(file('../pickle/boost_1000_1a/boost.pkl'))
+print model
 raw_test_data = readData("..\\data\\test5_results_3_all.csv")
 test_label_data = readData("..\\data\\test5_targets_3.csv")
 test_labels = getTrueLabels(test_label_data)

@@ -1,3 +1,6 @@
+import classifiers
+import numpy as np
+
 
 group_names = ["CCA", "PSDA_h1", "PSDA_h2", "PSDA_sum"]
 col_names = {
@@ -174,15 +177,13 @@ def printMetrics(fprs, tprs, thresholds, threshold):
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    import classifiers
     # from sklearn import qda, lda
-    # from sklearn.lda import LDA
+    from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
     from sklearn.tree import DecisionTreeClassifier
     from sklearn import metrics
     from sklearn.ensemble import VotingClassifier, AdaBoostClassifier, BaggingClassifier, RandomForestClassifier, GradientBoostingClassifier
     from sklearn.svm import LinearSVC, SVC
     from sklearn.neural_network import BernoulliRBM
-    import numpy as np
     from sklearn.pipeline import Pipeline
     # from sklearn.gaussian_process import GaussianProcess
     from sklearn.linear_model import LogisticRegression, SGDClassifier
@@ -330,30 +331,59 @@ if __name__ == '__main__':
                 train_data, train_1_labels = removePacketsAfterChange(train_data, train_1_labels, train_label_data, 256)
                 print len(test_data), len(test_data[0])
 
+                # features_to_remove = [0,   2,   6,   8,  10,  12,  14,  16,  18,  20,  22,  24,  26,
+                #                       28,  30,  31,  32,  33,  34,  35,  36,  38,  40,  42,  44,  46,
+                #                       48,  50,  52,  54,  56,  58,  60,  61,  62,  63,  64,  65,  66,
+                #                       68,  69,  70,  71,  72,  74,  76,  78,  80,  82,  83,  84,  85,
+                #                       86,  87,  88,  89,  90,  92,  96,  98, 100, 102, 104, 106, 108,
+                #                       109, 110, 112, 113, 114, 115, 116, 117, 118, 119, 120, 122, 124,
+                #                       125, 126, 128, 130, 132, 134, 136, 138, 140, 142, 144, 146, 148,
+                #                       150, 152, 154, 156, 158, 160, 162, 164, 168, 169, 170, 171, 172,
+                #                       174, 176, 178, 180, 182, 184, 186, 188, 190, 192, 194, 196, 198,
+                #                       204, 206, 208, 210, 212, 214]
+                # test_data = np.delete(np.array(test_data), features_to_remove, 1)
+                # train_data = np.delete(np.array(train_data), features_to_remove, 1)
+                # print len(test_data), len(test_data[0])
+
                 estimators = []
-                for k in range(10):
-                    model = AdaBoostClassifier(n_estimators=100, learning_rate=0.1,
-                                               base_estimator=DecisionTreeClassifier(max_depth=1, class_weight={True: 0.9, False: 0.1}))
-                    # model = RandomForestClassifier(n_estimators=100, max_depth=1, class_weight={True: 0.9, False: 0.1})
-                    # model = BaggingClassifier(base_estimator=DecisionTreeClassifier(max_depth=1), n_estimators=100, max_samples=1.0, max_features=1.0)
-                    model.classes_ = [True, False]
-                    # svm = LinearSVM(C=1)
+                feature_importance = []
+                for k in range(5):
+                    model = AdaBoostClassifier(n_estimators=100, learning_rate=1,
+                                               base_estimator=DecisionTreeClassifier(max_depth=1, class_weight={True: 0.8, False: 0.2}))
+                    # model1 = RandomForestClassifier(n_estimators=100, max_depth=1, class_weight={True: 0.8, False: 0.2})
+                    # model2 = BaggingClassifier(base_estimator=DecisionTreeClassifier(max_depth=1, class_weight={True: 0.8, False: 0.2}),
+                    #                            n_estimators=100, max_samples=1.0, max_features=1.0)
+                    # model1 = LinearSVM(C=1, class_weight={True: 0.8, False: 0.2})
+                    # model1 = SGDClassifier(shuffle=True, loss="log", class_weight={True: 0.8, False: 0.2})
+                    model1 = SVC(kernel="rbf", probability=True, class_weight={True: 0.8, False: 0.2})
+                    # model2 = SVC(kernel="poly", probability=True, class_weight={True: 0.8, False: 0.2}, degree=2)
+                    # model1 = LinearDiscriminantAnalysis()
                     # svm.classes_ = [True, False]
                     # pre_model = BernoulliRBM(learning_rate=0.1, n_components=10, n_iter=20)
-                    # model = Pipeline(steps=[("rbm", pre_model), ("svm", svm)])
+                    # model3 = Pipeline(steps=[("rbm", pre_model), ("svm", svm)])
+                    model.classes_ = [True, False]
+                    model1.classes_ = [True, False]
+                    # model2.classes_ = [True, False]
 
                     positive_train_labels = [i for i in range(len(train_1_labels)) if train_1_labels[i]]
+                    positive_train_labels = list(np.random.choice(positive_train_labels, size=int(len(positive_train_labels)*0.8), replace=False))
                     # positive_test_labels = [i for i in range(len(test_1_labels)) if test_1_labels[i]]
                     negative_train_labels = list(np.random.choice([i for i in range(len(train_1_labels)) if i not in positive_train_labels], replace=False, size=len(positive_train_labels)))
                     # negative_test_labels = list(np.random.choice([i for i in range(len(test_1_labels)) if i not in positive_test_labels], replace=False, size=len(positive_test_labels)))
 
                     # test_data = [test_data[i] for i in positive_test_labels + negative_test_labels]
-                    train_data = [train_data[i] for i in positive_train_labels + negative_train_labels]
+                    train_data1 = [train_data[i] for i in positive_train_labels + negative_train_labels]
 
                     # test_1_labels = [test_1_labels[i] for i in positive_test_labels + negative_test_labels]
-                    train_1_labels = [train_1_labels[i] for i in positive_train_labels + negative_train_labels]
-                    model.fit(train_data, train_1_labels)
-                    estimators.append((str(k), model))
+                    train_1_labels1 = [train_1_labels[i] for i in positive_train_labels + negative_train_labels]
+                    model.fit(train_data1, train_1_labels1)
+                    model1.fit(train_data1, train_1_labels1)
+                    # model2.fit(train_data1, train_1_labels1)
+                    # model3.fit(train_data, train_1_labels)
+                    # estimators.extend([(str(k)+"1", model)])
+                    estimators.extend([(str(k)+"1", model),(str(k)+"2", model1)])
+                    # feature_importance.append(model.feature_importances_)
+                    print k
                 voting = Voting(estimators, voting="soft")
                 decision = voting.transform(test_data)
                 # print decision
@@ -380,7 +410,7 @@ if __name__ == '__main__':
 
                 fpr, tpr, threshold = metrics.roc_curve(test_1_labels, decision[0], pos_label=True)
                 # fpr, tpr, threshold = metrics.roc_curve(test_1_labels, model.predict_proba(test_data).transpose()[0], pos_label=True)
-                print threshold
+                # print threshold
 
                 # classification = classifiers.ThresholdClassification(decision, [0], 0).classifyByAverage(1)
                 # pred = model.predict(test_data)
