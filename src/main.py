@@ -84,7 +84,7 @@ def binariseLabels(labels, target):
 
 
 def buildDataMatrix(data, target_index):
-    average = [1, 10, 100]
+    average = [50, 100, 150]
     x = []
     for name in group_names:
         for avg in average:
@@ -147,13 +147,29 @@ def check_result(data):
 
 def addDifferences(data):
     new_data = []
+    differences = [1, 2, 3]
     for row in data:
-        new_row = [0]
-        for i in range(len(row[1:])):
-            new_row.append(row[i]-row[i-1])
-        new_data.append(new_row)
-        new_data.append(row)
+        for d in differences:
+            new_row = [0 for _ in range(d)]
+            for i in range(len(row[d:])):
+                new_row.append(row[i]-row[i-d])
+            new_data.append(new_row)
+            new_data.append(row)
     return new_data
+
+
+def printMetrics(fprs, tprs, thresholds, threshold):
+    perfect_fpr = np.where(fprs <= threshold)[0]
+    if len(perfect_fpr) > 0:
+        fpr_index = perfect_fpr[-1]
+        pos_threshold = thresholds[fpr_index]
+        prediction = map(lambda x: x >= pos_threshold, decision[0])
+        print list(np.where(prediction)[0])
+        print fprs[fpr_index]
+        print tprs[fpr_index]
+        print pos_threshold
+        print metrics.confusion_matrix(test_1_labels, prediction, labels=[True, False])
+        print metrics.classification_report(test_1_labels, prediction, labels=[True, False])
 
 
 if __name__ == '__main__':
@@ -163,17 +179,20 @@ if __name__ == '__main__':
     # from sklearn.lda import LDA
     from sklearn.tree import DecisionTreeClassifier
     from sklearn import metrics
-    from sklearn.ensemble import AdaBoostClassifier, BaggingClassifier, RandomForestClassifier, GradientBoostingClassifier
+    from sklearn.ensemble import VotingClassifier, AdaBoostClassifier, BaggingClassifier, RandomForestClassifier, GradientBoostingClassifier
     from sklearn.svm import LinearSVC, SVC
     from sklearn.neural_network import BernoulliRBM
     import numpy as np
     from sklearn.pipeline import Pipeline
     # from sklearn.gaussian_process import GaussianProcess
     from sklearn.linear_model import LogisticRegression, SGDClassifier
-    # from svm import LinearSVM
+    from svm import LinearSVM
     # from pipeline import MyPipeline
     from sklearn.externals import joblib
     import pickle
+    from voting import Voting
+
+    np.random.seed(99)
 
     # roc_curve = rocLine(classifiers.ClassifyByRatio(data, col_names["CCA"]).classify(), true_labels)
     # plt.plot(roc_curve[0], roc_curve[1])
@@ -193,9 +212,9 @@ if __name__ == '__main__':
     multiclass = False
     difference = False
 
-    train_label_data = readData("..\\data\\test5_targets_2.csv")
+    train_label_data = readData("..\\data\\test5_targets_1.csv")
     train_labels = getTrueLabels(train_label_data)
-    raw_train_data = readData("..\\data\\test5_results_2_all.csv")
+    raw_train_data = readData("..\\data\\test5_results_1_all.csv")
 
     raw_test_data = readData("..\\data\\test5_results_3_all.csv")
     test_label_data = readData("..\\data\\test5_targets_3.csv")
@@ -280,8 +299,8 @@ if __name__ == '__main__':
         for target_index in [0,1,2]:
             for j, n_estimators in enumerate([1000]):#enumerate([10**(r) for r in range(-3, 1)]):
                 # model = BaggingClassifier(base_estimator=DecisionTreeClassifier(max_depth=1), n_estimators=1000, max_samples=0.2, max_features=0.2)
-                model = AdaBoostClassifier(n_estimators=n_estimators, learning_rate=0.1, base_estimator=DecisionTreeClassifier(max_depth=1), random_state=99)
-                # model = RandomForestClassifier(n_estimators=1000, max_depth=1, random_state=99)#, class_weight={True: 0.001, False: 0.9999}
+                # model = AdaBoostClassifier(n_estimators=n_estimators, learning_rate=0.1, base_estimator=DecisionTreeClassifier(max_depth=1))
+                # model = RandomForestClassifier(n_estimators=1000, max_depth=1)#, class_weight={True: 0.001, False: 0.9999}
                 # model = GradientBoostingClassifier(n_estimators=1000, max_depth=3, random_state=99)
                 # svm = LinearSVC(C=1)
                 # # svm = LDA()
@@ -299,41 +318,61 @@ if __name__ == '__main__':
                 # # model = GaussianProcess()
                 # # model = BaggingClassifier(base_estimator=gaussian, n_estimators=10, max_samples=1.0, max_features=1.0)
 
-                model.classes_ = [True, False]
+                # model.classes_ = [True, False]
 
                 test_1_labels = binariseLabels(test_labels, target_index+1)
                 train_1_labels = binariseLabels(train_labels, target_index+1)
 
-                positive_train_labels = [i for i in range(len(train_1_labels)) if train_1_labels[i]]
-                # positive_test_labels = [i for i in range(len(test_1_labels)) if test_1_labels[i]]
-                negative_train_labels = list(np.random.choice([i for i in range(len(train_1_labels)) if i not in positive_train_labels], replace=False, size=len(positive_train_labels)))
-                # negative_test_labels = list(np.random.choice([i for i in range(len(test_1_labels)) if i not in positive_test_labels], replace=False, size=len(positive_test_labels)))
-
-                # test_1_labels = [test_1_labels[i] for i in positive_test_labels + negative_test_labels]
-                train_1_labels = [train_1_labels[i] for i in positive_train_labels + negative_train_labels]
-
                 test_data = buildDataMatrix(raw_test_data, target_index)
                 train_data = buildDataMatrix(raw_train_data, target_index)
-
-                # test_data = [test_data[i] for i in positive_test_labels + negative_test_labels]
-                train_data = [train_data[i] for i in positive_train_labels + negative_train_labels]
 
                 test_data, test_1_labels = removePacketsAfterChange(test_data, test_1_labels, test_label_data, 256)
                 train_data, train_1_labels = removePacketsAfterChange(train_data, train_1_labels, train_label_data, 256)
                 print len(test_data), len(test_data[0])
 
+                estimators = []
+                for k in range(10):
+                    model = AdaBoostClassifier(n_estimators=100, learning_rate=0.1,
+                                               base_estimator=DecisionTreeClassifier(max_depth=1, class_weight={True: 0.9, False: 0.1}))
+                    # model = RandomForestClassifier(n_estimators=100, max_depth=1, class_weight={True: 0.9, False: 0.1})
+                    # model = BaggingClassifier(base_estimator=DecisionTreeClassifier(max_depth=1), n_estimators=100, max_samples=1.0, max_features=1.0)
+                    model.classes_ = [True, False]
+                    # svm = LinearSVM(C=1)
+                    # svm.classes_ = [True, False]
+                    # pre_model = BernoulliRBM(learning_rate=0.1, n_components=10, n_iter=20)
+                    # model = Pipeline(steps=[("rbm", pre_model), ("svm", svm)])
+
+                    positive_train_labels = [i for i in range(len(train_1_labels)) if train_1_labels[i]]
+                    # positive_test_labels = [i for i in range(len(test_1_labels)) if test_1_labels[i]]
+                    negative_train_labels = list(np.random.choice([i for i in range(len(train_1_labels)) if i not in positive_train_labels], replace=False, size=len(positive_train_labels)))
+                    # negative_test_labels = list(np.random.choice([i for i in range(len(test_1_labels)) if i not in positive_test_labels], replace=False, size=len(positive_test_labels)))
+
+                    # test_data = [test_data[i] for i in positive_test_labels + negative_test_labels]
+                    train_data = [train_data[i] for i in positive_train_labels + negative_train_labels]
+
+                    # test_1_labels = [test_1_labels[i] for i in positive_test_labels + negative_test_labels]
+                    train_1_labels = [train_1_labels[i] for i in positive_train_labels + negative_train_labels]
+                    model.fit(train_data, train_1_labels)
+                    estimators.append((str(k), model))
+                voting = Voting(estimators, voting="soft")
+                decision = voting.transform(test_data)
+                # print decision
+                decision = sum(decision).transpose()
+                # decision = [decision]  # for svm
+                # print decision
+
                 # train_data = pre_model.fit_transform(train_data, train_1_labels)
                 # test_data = pre_model.transform(test_data)
                 # print len(test_data), len(test_data[0])
 
-                model.fit(train_data, train_1_labels)
-                print model.score(train_data, train_1_labels)
-                print model.score(test_data, test_1_labels)
+                # model.fit(train_data, train_1_labels)
+                # print model.score(train_data, train_1_labels)
+                # print model.score(test_data, test_1_labels)
 
                 # print metrics.classification_report(test_1_labels, model.predict(test_data))
 
                 # decision = [model.decision_function(test_data)]  # with one target needs another list around it?
-                decision = model.predict_proba(test_data).transpose()  # everything except svm
+                # decision = model.predict_proba(test_data).transpose()  # everything except svm
                 # print all(map(lambda x: x==decision[0][0], decision[0]))
 
                 # plt.subplot(2, 2, 2)
@@ -346,18 +385,8 @@ if __name__ == '__main__':
                 # classification = classifiers.ThresholdClassification(decision, [0], 0).classifyByAverage(1)
                 # pred = model.predict(test_data)
                 # print all(pred) or not any(pred), pred[0]
-                perfect_fpr = np.where(fpr <= 0.01)[0]
-                if len(perfect_fpr) > 0:
-                    fpr_index = perfect_fpr[-1]
-                    pos_threshold = threshold[fpr_index]
-                    # print metrics.confusion_matrix(test_1_labels, pred)
-                    prediction = map(lambda x: x >= pos_threshold, decision[0])
-                    print list(np.where(prediction)[0])
-                    print fpr[fpr_index]
-                    print tpr[fpr_index]
-                    print pos_threshold
-                    print metrics.confusion_matrix(test_1_labels, prediction, labels=[True, False])
-                    print metrics.classification_report(test_1_labels, prediction, labels=[True, False])
+                printMetrics(fpr, tpr, threshold, 0.01)
+                printMetrics(fpr, tpr, threshold, 0)
 
                 # # decision = map(lambda x: (x[0], 1, x[1]), enumerate(decision.transpose()[0]))
                 # roc_curve = rocLine(classification, test_1_labels)
