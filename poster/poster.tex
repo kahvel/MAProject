@@ -1,0 +1,158 @@
+\documentclass[final]{beamer}
+\mode<presentation>
+
+\usepackage{pgfplots}
+\usepgfplotslibrary{groupplots}
+\usepackage{tikz-timing}
+\usetikzlibrary{shapes,arrows}
+
+\usepackage{ragged2e} 
+
+% STEP 1: Change the next line according to your language
+\usepackage[english]{babel}
+
+% STEP 2: Make sure this character encoding matches the one you save this file as
+% (this template is utf8 by default but your editor may change it, causing problems)
+\usepackage[utf8]{inputenc}
+
+% You probably don't need to touch the following four lines
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amsthm, amssymb, latexsym}
+\usepackage{exscale} % required to scale math fonts properly
+
+\usepackage[orientation=portrait,size=a0,scale=1.4]{beamerposter}
+
+
+% STEP 3:
+% Change colours by setting \usetheme[<id>, twocolumn]{poster}.
+\usetheme[twocolumn]{poster}
+
+
+% STEP 4: Set up the title and author info
+\titlestart{Improving Classification Algorithm} % first line of title
+\titleend{of Brain-Computer Interface} % second line of title
+% \titlesize{\Huge} % Use this to change title size if necessary. See README for details.
+
+\author{\hspace{1cm}\textbf{Author: Anti Ingel}$^1$\\\hspace{1cm}\url{https://github.com/kahvel/MAProject}}
+\institute{\hspace{1cm}$^1$Computer Science, 1st year of MSc,\\\hspace{1cm}University of Tartu faculty of Science and Technology,\\\hspace{1cm}Institute of Computer Science}
+
+% Stuff such as logos of contributing institutes can be put in the lower left corner using this
+\leftcorner{}
+
+% MY ADDED THINGS
+
+% FOR POSITIONING FIGURES
+\usepackage[absolute,overlay]{textpos}
+
+% MAKE LISTS JUSTIFY!!!!!!!!!!
+\makeatletter
+\renewcommand{\itemize}[1][]{%
+	\beamer@ifempty{#1}{}{\def\beamer@defaultospec{#1}}%
+	\ifnum \@itemdepth >2\relax\@toodeep\else
+	\advance\@itemdepth\@ne
+	\beamer@computepref\@itemdepth% sets \beameritemnestingprefix
+	\usebeamerfont{itemize/enumerate \beameritemnestingprefix body}%
+	\usebeamercolor[fg]{itemize/enumerate \beameritemnestingprefix body}%
+	\usebeamertemplate{itemize/enumerate \beameritemnestingprefix body begin}%
+	\list
+	{\usebeamertemplate{itemize \beameritemnestingprefix item}}
+	{\def\makelabel##1{%
+			{%
+				\hss\llap{{%
+						\usebeamerfont*{itemize \beameritemnestingprefix item}%
+						\usebeamercolor[fg]{itemize \beameritemnestingprefix item}##1}}%
+			}%
+		}%
+	}
+	\fi%
+	\beamer@cramped%
+	\justifying% NEW
+	%\raggedright% ORIGINAL
+	\beamer@firstlineitemizeunskip%
+}
+\makeatother
+
+\definecolor{Mat}{RGB}{10, 74, 147}
+
+\begin{document}
+
+\begin{poster}
+
+\begin{textblock}{10}(0.75, 12.4)
+	\include{./tikz/roc}
+\end{textblock}
+
+\begin{textblock}{10}(1, 3.1)
+	\input{./tikz/feature}
+\end{textblock}
+
+\begin{textblock}{10}(1.35, 6.1)
+	\input{./tikz/white_box}
+\end{textblock}
+
+\newcolumn
+%\vspace{1cm}
+\section{Introduction}
+\begin{columns}[T]
+	\column{0\textwidth}
+	\column{0.98\textwidth}
+\vspace{1.7cm}
+\justify
+The aim of this project is to improve the classification algorithm of a brain-computer interface (BCI) by using machine learning techniques. The BCI under consideration is author's previous work and therefore all the steps from data collection to classification were done either as a part ot this project or by using author's previous work. The BCI works by measuring users brain activity using electroencephalography (EEG) device Emotiv EPOC and then tries to find certain patterns from the EEG signal. In this case, the patterns we are interested in are changes in the amounts of frequencies present in the signal. But since brain signals are inherently very noisy and the EEG device used to collect data was a consumer-grade device, finding patterns in the signal turned out to be very challenging.
+	\column{0.02\textwidth}
+\end{columns}
+
+\vspace{22.1cm}
+
+\section{Searching for a needle in a haystack}
+
+\begin{columns}[T]
+	\column{0\textwidth}
+	\column{0.98\textwidth}
+	\vspace{1.7cm}
+	\justify
+As can be seen from the figure above, the extracted features are very noisy and thus moving average was used to make the changes in features smoother. Furthermore, since the data is time series we have to take into account that changes in the brain signal do not take place instantaneously. Therefore, the observations directly after command change were discarded to make sure that the algorithms do not learn incorrect association between brain state and command.
+Finally, new features were added that contained information about the amount of frequency increase compared to previous time points and comparison between different frequencies at the same time point. 
+	\column{0.02\textwidth}
+\end{columns}
+
+\vspace{0.5cm}
+
+\section{Machine learning algorithms}
+
+\begin{columns}[T]
+\column{0\textwidth}
+\column{0.98\textwidth}
+\vspace{1.7cm}
+\justify
+The multiclass classification task with three classes (commands) was divided into three binary classification tasks. Due to the noisiness of the data, stable learning algorithms were preferred. Many different learning algorithms were tested, including logistic regression, support vector machines (SVM) with different kernels, random forests and finally boosting, bagging and voting of different classifiers. The best results were achieved using soft voting of boosting of decision tree stumps together with SVM. Final decision was made using the sum of the probabilities of the classes---if the sum of probabilities was larger than given threshold, then the class was predicted. 
+
+\column{0.02\textwidth}
+\end{columns}
+
+\newcolumn
+
+\vspace{0.1cm}
+\justify
+To extract frequency information from the raw signal, canonical correlation analysis (CCA) and power spectral density analysis (PSDA) methods were used. These methods can be used to estimate how much certain frequency is present in the signal over some time window. During the data collection, users could send three different commands to the BCI and each command corresponds to some frequency change. CCA method extracts three different features from the data, one for each command. PSDA method, however, is not multidimensional and it extracts three features for each EEG channel (P7, O1, O2, P8).
+
+\vspace{43.5cm}
+\section{Results and conclusion}
+\justify
+In the figure below, the black dashed line denotes the expected state and the coloured lines denote the state predicted by the classifier on the test set. The thresholds were chosen so that there are no false positives. As can be seen the classifier is quite good at classifying command 2, but not very good at predicting command 3, which is probably because there were the least samples from class 3. Although the plots below do not seem very impressive, by relaxing the threshold a little, the precision of the classifiers still stays high---0.82, 0.92 and 0.42 for the 1st, 2nd and 3rd command respectively, which is not bad considering the noisiness of the data. The results are good starting point for further study. In this project, the classification algorithms only minimally took into account that we are predicting on time series, but the fact that observations are sequential in time contains very useful information and it can be used to greatly improve the performance of the classifiers.
+
+
+%\begin{tabular}{|r||r|r||r|r||r|r|}
+%%	\hline  &
+%	\hline  & 1st on & 1st off & 2nd on & 2nd off & 3rd on & 3rd off\\ 
+%	\hline Predicted on & 202 & 3106 & 514 & 2751 & 37 & 1179\\ 
+%	\hline Predicted off & 43 & 4438 & 45 & 4479 & 52 & 6521\\ 
+%	\hline Precision & 0.82 & & 0.92 & & 0.42 &\\
+%	\hline
+%\end{tabular}
+
+
+
+\end{poster}
+\end{document}
