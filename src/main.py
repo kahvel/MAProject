@@ -1,5 +1,6 @@
 import classifiers
 import numpy as np
+from sklearn import metrics
 
 
 group_names = ["CCA", "PSDA_h1", "PSDA_h2", "PSDA_sum"]
@@ -161,18 +162,19 @@ def addDifferences(data):
     return new_data
 
 
-def printMetrics(fprs, tprs, thresholds, threshold):
+def printMetrics(fprs, tprs, thresholds, threshold, decision, test_labels):
     perfect_fpr = np.where(fprs <= threshold)[0]
     if len(perfect_fpr) > 0:
         fpr_index = perfect_fpr[-1]
         pos_threshold = thresholds[fpr_index]
-        prediction = map(lambda x: x >= pos_threshold, decision[0])
+        prediction = map(lambda x: x >= pos_threshold, decision)
         print list(np.where(prediction)[0])
         print fprs[fpr_index]
         print tprs[fpr_index]
         print pos_threshold
-        print metrics.confusion_matrix(test_1_labels, prediction, labels=[True, False])
-        print metrics.classification_report(test_1_labels, prediction, labels=[True, False])
+        print metrics.confusion_matrix(test_labels, prediction, labels=[True, False])
+        print metrics.classification_report(test_labels, prediction, labels=[True, False])
+        return prediction
 
 
 if __name__ == '__main__':
@@ -180,7 +182,6 @@ if __name__ == '__main__':
     # from sklearn import qda, lda
     from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
     from sklearn.tree import DecisionTreeClassifier
-    from sklearn import metrics
     from sklearn.ensemble import VotingClassifier, AdaBoostClassifier, BaggingClassifier, RandomForestClassifier, GradientBoostingClassifier
     from sklearn.svm import LinearSVC, SVC
     from sklearn.neural_network import BernoulliRBM
@@ -415,8 +416,9 @@ if __name__ == '__main__':
                 # classification = classifiers.ThresholdClassification(decision, [0], 0).classifyByAverage(1)
                 # pred = model.predict(test_data)
                 # print all(pred) or not any(pred), pred[0]
-                printMetrics(fpr, tpr, threshold, 0.01)
-                printMetrics(fpr, tpr, threshold, 0)
+                printMetrics(fpr, tpr, threshold, 0.01, decision[0], test_1_labels)
+                printMetrics(fpr, tpr, threshold, 0, decision[0], test_1_labels)
+                printMetrics(fpr, tpr, threshold, 0, decision[0], test_1_labels)
 
                 # # decision = map(lambda x: (x[0], 1, x[1]), enumerate(decision.transpose()[0]))
                 # roc_curve = rocLine(classification, test_1_labels)
