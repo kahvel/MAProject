@@ -105,7 +105,7 @@ The aim of this project is to improve the classification algorithm of a brain-co
 
 \vspace{22.1cm}
 
-\section{Searching for a needle in a haystack}
+\section{Looking for a needle in a haystack}
 
 \begin{columns}[T]
 	\column{0\textwidth}
@@ -126,7 +126,7 @@ Finally, new features were added that contained information about the amount of 
 \column{0.98\textwidth}
 \vspace{1.7cm}
 \justify
-The multiclass classification task with three classes (commands) was divided into three binary classification tasks. Due to the noisiness of the data, stable learning algorithms were preferred. Many different learning algorithms were tested, including logistic regression, support vector machines (SVM) with different kernels, random forests and finally boosting, bagging and voting of different classifiers. The best results were achieved using soft voting of boosting of decision tree stumps together with SVM. Final decision was made using the sum of the probabilities of the classes---if the sum of probabilities was larger than given threshold, then the class was predicted. 
+The multiclass classification task with three classes (commands) was divided into three binary classification tasks. Due to the noisiness of the data, stable learning algorithms were preferred. Many different learning algorithms were tested, including logistic regression, linear discriminant analysis, support vector machines (SVM) with different kernels, random forests and finally boosting, bagging and voting of different classifiers. The best results were achieved using soft voting of SVM together with boosting of decision tree stumps. Final decision was made using the sum of the probabilities of the classes---if the sum of probabilities was larger than given threshold, then the class was predicted. 
 
 \column{0.02\textwidth}
 \end{columns}
