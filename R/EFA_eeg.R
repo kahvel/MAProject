@@ -1,17 +1,7 @@
 
----
-title: "MA project"
-author: "Anti"
-output:
-  pdf_document:
-    keep_tex: true
----
 
-
-
-```{r}
 # Raw EEG
-setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+setwd("../data/")
 
 eeg_data <- read.csv("test5_1.csv", header=TRUE, sep=" ")
 eeg_data <- eeg_data[c("P7", "O1", "O2", "P8")]
@@ -21,10 +11,11 @@ plot(eeg_data$O1, type="l")
 plot(eeg_data$O2, type="l")
 plot(eeg_data$P7, type="l")
 plot(eeg_data$P8, type="l")
-```
 
-```{r}
-setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+
+
+
+setwd("../data/")
 
 trial_data <- read.csv("test5_targets_2.csv", header=TRUE, sep=" ")
 trial <- trial_data[5,]
@@ -46,10 +37,10 @@ plot(x, fit$scores, type="l")
 #par(mfrow=c(1,1))
 #plot(x, fit$scores, type="l")
 #lines(x, trial_eeg$O1, type="l", col="red")
-```
 
 
-```{r}
+
+
 step <- 1
 packet_to_result <- function(packet) {
     if (packet < 256) {
@@ -59,7 +50,7 @@ packet_to_result <- function(packet) {
     }
 }
 
-setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+setwd("../data/")
 
 result_data <- read.csv("test5_results_2_all.csv", header=TRUE, sep=" ")
 psdasum <- c("PSDA_sum_f1","PSDA_sum_f2","PSDA_sum_f3")
@@ -87,9 +78,9 @@ trial_result <- as.data.frame(apply(trial_result, 2, function(x){scale(x)}))
 fit <- factanal(trial_result, 1, rotation="varimax", scores="regression")
 fit
 trial
-```
 
-```{r}
+
+
 
 new_cols <- matrix(NA, ncol=3, nrow=nrow(result_data))
 trial_index <- 1
@@ -110,9 +101,9 @@ result_data["t2"] <- new_cols[,2]
 result_data["t3"] <- new_cols[,3]
 
 result_data <- result_data[1:(length(result_data)-1),]
-```
 
-```{r}
+
+
 
 loadings <- list()#matrix(NA, nrow=nrow(trial_data), ncol=ncol(result_data))
 scores <- list()
@@ -129,10 +120,9 @@ for (i in 2:nrow(trial_data)) {
 #cbind(round(loadings,2), trial_data$Target)
 
 
-```
 
-  
-```{r}
+
+
 library(TTR)
 
 setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
@@ -164,12 +154,12 @@ lines(SMA(result_data$PSDA_h1_f3,7), col="red")
 lines(SMA(result_data$CCA_f3,7), col="blue")
 points(new_cols[,3])
 
-```
 
 
-I realized we cannot centralise (and normalise) all the features one by one. We have to combine some of them, otherwise we lose the ordering which is essential.??
 
-```{r}
+#I realized we cannot centralise (and normalise) all the features one by one. We have to combine some of them, otherwise we lose the ordering which is essential.??
+
+
 setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
 result_data <- read.csv("test5_results_1_all.csv", header=TRUE, sep=" ")
 
@@ -209,11 +199,11 @@ points(new_cols[,3]-3, col="blue")
 
 fit2 <- factanal(fit$scores[indices,], 1, scores="regression")
 
-```
 
-Let's try to use moving average filter on the results before factanal.
 
-```{r}
+# Let's try to use moving average filter on the results before factanal.
+
+
 setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
 result_data <- read.csv("test5_results_1_all.csv", header=TRUE, sep=" ")
 psda2 <- c("PSDA_h1_f1","PSDA_h1_f2","PSDA_h1_f3")
@@ -235,22 +225,22 @@ points(new_cols[7:200,2]-6)
 points(new_cols[7:200,3]-6, col="red")
 points(new_cols[7:200,1]-6, col="blue")
 
-```
 
-Combining EEG with results just puts the signal into one factor. Useless?
 
-```{r}
+# Combining EEG with results just puts the signal into one factor. Useless?
+
+
 
 result_data1 <- read.csv("test5_results_1_all.csv", header=TRUE, sep=" ")
 result_data2 <- read.csv("test5_results_2_all.csv", header=TRUE, sep=" ")
 result_data3 <- read.csv("test5_results_3_all.csv", header=TRUE, sep=" ")
 result_data <- rbind(result_data1, result_data2, result_data3)
 
-```
 
 
 
-```{r}
+
+
 #F1 -> PSDA_sum_f1, a3, NA
 #F2 -> PSDA_sum_f2, b3, NA
 #F3 -> PSDA_sum_f3, c3, NA
@@ -285,9 +275,9 @@ F3 <-> F2, F3F2, NA
 
 r <- sem(model, result_data_cov, nrow(result_data), maxiter=50000, iterlim=10000)
 
-```
 
-```{r}
+
+
 
 setwd("C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders")
 
@@ -308,12 +298,12 @@ offs <- 0
 points(new_cols[,1]+offs)
 points(new_cols[,2]+offs, col="red")
 points(new_cols[,3]+offs, col="blue")
-```
 
-```{r}
-setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+
+
+setwd("../data/")
 result_data <- read.csv("test5_results_2_all.csv", header=TRUE, sep=" ")
-setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+setwd("../data/")
 trial_data <- read.csv("test5_targets_2.csv", header=TRUE, sep=" ")
 
 for (i in 1:nrow(new_cols)) {
@@ -325,9 +315,9 @@ result_data["t2"] <- new_cols[,2]
 result_data["t3"] <- new_cols[,3]
 
 write.csv(result_data, "C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders\\result_with_cols2.csv")
-```
 
-```{r}
+
+
 
 setwd("C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders")
 
@@ -360,20 +350,20 @@ points(new_cols[range,][,1]-1)
 points(new_cols[range,][,2]-1, col="red")
 points(new_cols[range,][,3]-1, col="blue")
 
-```
 
-```{r}
 
-setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+
+
+setwd("../data/")
 result_data <- read.csv("test5_results_2_all.csv", header=TRUE, sep=" ")
 
 result_data <- apply(result_data, 2, function(x) {SMA(x, 64)})[64:nrow(result_data),]
 
 write.csv(result_data, "C:\\Users\\Anti\\Desktop\\sas\\SASUniversityEdition\\myfolders\\moving_average.csv")
 
-```
 
-```{r}
+
+
 library(MARSS)
 Z.vals = list(
   "z11", 0, 0,
@@ -400,9 +390,9 @@ V0 = diag(5,3)
 dfa.model = list(Z=Z, A="zero", R=R, B=B, U=U, Q=Q, x0=x0, V0=V0)
 cntl.list = list(maxit=50)
 kemz.3 = MARSS(t(as.matrix(result_data)), model=dfa.model, control=cntl.list)
-```
 
-```{r}
+
+
 # load the data (there are 3 datasets contained here)
 data(lakeWAplankton)
 # we want lakeWAplanktonTrans, which has been transformed
@@ -417,14 +407,14 @@ phytoplankton = c("Cryptomonas", "Diatoms", "Greens",
 dat.spp.1980 = plankdat[,phytoplankton]
 dat.spp.1980 = t(dat.spp.1980)
 
-```
 
 
-```{r}
+
+
 library(TTR)
-setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+setwd("../data/")
 result_data <- read.csv("test5_results_3_all.csv", header=TRUE, sep=" ")
-setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+setwd("../data/")
 trial_data <- read.csv("test5_targets_3.csv", header=TRUE, sep=" ")
 
 classify_results <- function(method_data) {
@@ -500,11 +490,11 @@ scores <- read.csv("SCORES.csv", header=TRUE)
 colnames(scores) <- c("f1", "f2", "f3")
 lines(plot_roc(classify_results(scores)), type="l", col="orange")
 
-```
 
-No repeating made h2 better.
 
-```{r}
+# No repeating made h2 better.
+
+
 s <- read.table("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\R\\s.txt")
 
 test <- as.data.frame(apply(result_data[c("PSDA_h2_f1","PSDA_h2_f2","PSDA_h2_f3",
@@ -512,11 +502,11 @@ test <- as.data.frame(apply(result_data[c("PSDA_h2_f1","PSDA_h2_f2","PSDA_h2_f3"
 factor_scores <- as.matrix(test) %*% (as.matrix(s))
 
 lines(plot_roc(classify_results(factor_scores), TRUE), type="l", col="red")
-```
 
-Lets try time series factor analysis (TSFA)
 
-```{r}
+# Lets try time series factor analysis (TSFA)
+
+
 library(tsfa)
 
 target <- rbind(c(1,0,0),
@@ -544,14 +534,14 @@ pred <- prediction(classified[,3], true_labels == 1)
 perf <- performance(pred, "tpr", "fpr")
 plot(perf, add=T)
 abline(0,1)
-```
 
-Classification, let's start out simple and move on to more complex
 
-```{r}
-setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\result")
+# Classification, let's start out simple and move on to more complex
+
+
+setwd("../data/")
 result_data <- read.csv("test5_results_2_all.csv", header=TRUE, sep=" ")
-setwd("C:\\Users\\Anti\\Desktop\\PycharmProjects\\MAProject\\src\\eeg")
+setwd("../data/")
 trial_data <- read.csv("test5_targets_2.csv", header=TRUE, sep=" ")
 
 get_true_labels = function(trial_data, step=1, sma=1) {
@@ -763,9 +753,9 @@ positive_data = apply(scores, 2, function(x){x-min(x)+1})
 classes = classify_results(positive_data, factor_names)
 plot_rocs(classes, true_labels[64:length(true_labels)], factor_names)
 
-```
 
-Lähtetunnuste dispersioonid on ühed. Kommunaliteetide summa jagatud tunnuste arvuga. Peakomponendid - maksimeerib dispersiooni. Faktormeetod - kirjelda ära korrelatsioonimaatriks (see esikohal ja siis vaadata ka dispersiooni). 
 
-Kinnitavas p-value võib olla liiga tundlik, liiga väike.
+# Lähtetunnuste dispersioonid on ühed. Kommunaliteetide summa jagatud tunnuste arvuga. Peakomponendid - maksimeerib dispersiooni. Faktormeetod - kirjelda ära korrelatsioonimaatriks (see esikohal ja siis vaadata ka dispersiooni). 
+
+# Kinnitavas p-value võib olla liiga tundlik, liiga väike.
 
