@@ -61,7 +61,7 @@ voters = {
     2: Voting(estimators[2], voting=type),
     3: Voting(estimators[3], voting=type)
 }
-# voters = {
+# voters = { # Estimators used in DM project
 #     1: Voting(estimators[1][8:10]+estimators[1][23:24], voting=type), #, weights={True: 0.8, False: 0.2}
 #     2: Voting(estimators[2][0:8]+estimators[2][21:22], voting=type),
 #     3: Voting(estimators[3][0:8]+estimators[3][23:24], voting=type)
