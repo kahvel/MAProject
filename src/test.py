@@ -1,16 +1,19 @@
 from sklearn.ensemble import VotingClassifier, AdaBoostClassifier, BaggingClassifier, RandomForestClassifier, GradientBoostingClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
-import classifiers
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
+from sklearn.feature_selection import VarianceThreshold, SelectKBest, chi2, RFECV
 import numpy as np
 
 
-group_names = ["CCA", "PSDA_h1", "PSDA_h2"]#, "PSDA_sum"]
+group_names = ["CCA", "PSDA_h1", "PSDA_h2", "SNR_h1", "SNR_h2"]#, "PSDA_sum"]
 col_names = {
     "CCA": ["CCA_f1", "CCA_f2", "CCA_f3"],
     "PSDA_h1": ["PSDA_h1_f1", "PSDA_h1_f2", "PSDA_h1_f3"],
     "PSDA_h2": ["PSDA_h2_f1", "PSDA_h2_f2", "PSDA_h2_f3"],
-    # "PSDA_sum": ["PSDA_sum_f1", "PSDA_sum_f2", "PSDA_sum_f3"]
+    # "PSDA_sum": ["PSDA_sum_f1", "PSDA_sum_f2", "PSDA_sum_f3"],
+    "SNR_h1": ["SNR_h1_f1", "SNR_h1_f2", "SNR_h1_f3"],
+    "SNR_h2": ["SNR_h2_f1", "SNR_h2_f2", "SNR_h2_f3"],
 }
 
 
@@ -81,19 +84,24 @@ def scale(data):
     return scaled_data
 
 
-def addRatio(data):
-    data[0] = data[0].tolist()
-    data[1] = data[1].tolist()
-    data[2] = data[2].tolist()
-    for i, rows in enumerate(zip(data[0], data[1], data[2])):
+def addRatio(data_matrices, data_matrix):
+    data_matrices[0] = data_matrices[0].tolist()
+    data_matrices[1] = data_matrices[1].tolist()
+    data_matrices[2] = data_matrices[2].tolist()
+    for i, rows in enumerate(zip(data_matrices[0], data_matrices[1], data_matrices[2])):
         for features in zip(rows[0], rows[1], rows[2]):
             feature_sum = sum(features)
-            data[0][i].append(features[0]/feature_sum)
-            data[1][i].append(features[1]/feature_sum)
-            data[2][i].append(features[2]/feature_sum)
+            feature1 = features[0]/feature_sum
+            feature2 = features[1]/feature_sum
+            feature3 = features[2]/feature_sum
+            data_matrices[0][i].append(feature1)
+            data_matrices[1][i].append(feature2)
+            data_matrices[2][i].append(feature3)
+            data_matrix[i].extend([feature1, feature2, feature3])
 
 
-raw_data = readData("U:\\data\\my\\results1_2_target\\results0.csv")
+raw_data = readData("U:\\data\\my\\3_75_results\\results01.csv")
+# raw_data = readData("U:\\data\\my\\results1_2_target\\results4.csv")
 print raw_data["CCA_f1"]
 print raw_data["CCA_f2"]
 print raw_data["CCA_f3"]
@@ -110,19 +118,23 @@ print data_matrices[0][0]
 print data_matrices[1][0]
 print data_matrices[2][0]
 
-addRatio(data_matrices)
+data_matrix = buildDataMatrix(raw_data).tolist()
+
+addRatio(data_matrices, data_matrix)
 print data_matrices[0][0]
 print data_matrices[1][0]
 print data_matrices[2][0]
 
-data_matrices[0], _ = combineSamples(data_matrices[0], labels, 2)
-data_matrices[1], _ = combineSamples(data_matrices[1], labels, 2)
-data_matrices[2], _ = combineSamples(data_matrices[2], labels, 2)
+print data_matrix[0]
 
-data_matrix = buildDataMatrix(raw_data)
-data_matrix, labels = combineSamples(data_matrix, labels, 2)
+look_back = 5
 
-print data_matrix[-1]
+data_matrices[0], _ = combineSamples(data_matrices[0], labels, look_back)
+data_matrices[1], _ = combineSamples(data_matrices[1], labels, look_back)
+data_matrices[2], _ = combineSamples(data_matrices[2], labels, look_back)
+
+data_matrix, labels = combineSamples(data_matrix, labels, look_back)
+
 print data_matrices[0][-1]
 print data_matrices[1][-1]
 print data_matrices[2][-1]
@@ -142,9 +154,17 @@ print sum(labels1)
 print sum(labels2)
 print sum(labels3)
 
+# model1 = LinearDiscriminantAnalysis()
+# model2 = LinearDiscriminantAnalysis()
+# model3 = LinearDiscriminantAnalysis()
+
 model1 = RandomForestClassifier(n_estimators=10, max_depth=3)#, class_weight={True: 0.2, False:0.2})
 model2 = RandomForestClassifier(n_estimators=10, max_depth=3)#, class_weight={True: 0.2, False:0.2})
 model3 = RandomForestClassifier(n_estimators=10, max_depth=3)#, class_weight={True: 0.2, False:0.2})
+
+# model1 = AdaBoostClassifier(n_estimators=100)#, class_weight={True: 0.2, False:0.2})
+# model2 = AdaBoostClassifier(n_estimators=100)#, class_weight={True: 0.2, False:0.2})
+# model3 = AdaBoostClassifier(n_estimators=100)#, class_weight={True: 0.2, False:0.2})
 
 # model1 = KNeighborsClassifier(n_neighbors=20)
 # model2 = KNeighborsClassifier(n_neighbors=20)
@@ -184,3 +204,35 @@ print "CV 2"
 print sklearn.metrics.confusion_matrix(labels2, prediction22)
 print "CV 3"
 print sklearn.metrics.confusion_matrix(labels3, prediction23)
+
+
+import matplotlib.pyplot as plt
+
+
+model = LinearDiscriminantAnalysis()
+model.fit(data_matrix, labels)
+
+# feature_selector = RFECV(estimator=model)
+# # feature_selector = SelectKBest(score_func=chi2, k=20)
+# feature_selector.fit(data_matrix, labels)
+# data_matrix = feature_selector.transform(data_matrix)
+# print data_matrix.shape
+# model.fit(data_matrix, labels)
+
+predicted = model.predict(data_matrix)
+print sklearn.metrics.confusion_matrix(labels, predicted)
+
+prediction = sklearn.cross_validation.cross_val_predict(model, data_matrix, labels, cv=5)
+print sklearn.metrics.confusion_matrix(labels, prediction)
+
+x = model.transform(data_matrix)
+
+labels = np.array(labels)
+
+plt.figure()
+for c, i, target_name in zip("rgb", [1, 2, 3], [1, 2, 3]):
+    plt.scatter(x[labels == i, 0], x[labels == i, 1], c=c, label=target_name)
+plt.legend()
+plt.title('LDA')
+
+plt.show()
