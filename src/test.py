@@ -9,7 +9,7 @@ import sklearn.cross_validation
 import sklearn.metrics
 
 
-target_count = 5
+target_count = 3
 group_names = ["CCA", "LRT", "PSDA_h1", "PSDA_h2", "SNR_h1", "SNR_h2"]#, "PSDA_sum"]
 col_names = {
     "CCA": ["CCA_f1", "CCA_f3", "CCA_f5"],
@@ -20,15 +20,15 @@ col_names = {
     "SNR_h2": ["SNR_h2_f1", "SNR_h2_f3", "SNR_h2_f5"],
     "LRT": ["LRT_f1", "LRT_f3", "LRT_f5"],
 }
-col_names = {
-    "CCA": ["CCA_f1", "CCA_f3", "CCA_f5"],
-    "PSDA_h1": ["PSDA_h1_f1", "PSDA_h1_f2", "PSDA_h1_f3", "PSDA_h1_f4", "PSDA_h1_f5"],
-    "PSDA_h2": ["PSDA_h2_f1", "PSDA_h2_f2", "PSDA_h2_f3", "PSDA_h2_f4", "PSDA_h2_f5"],
-    # "PSDA_sum": ["PSDA_sum_f1", "PSDA_sum_f2", "PSDA_sum_f3"],
-    "SNR_h1": ["SNR_h1_f1", "SNR_h1_f2", "SNR_h1_f3", "SNR_h1_f4", "SNR_h1_f5"],
-    "SNR_h2": ["SNR_h2_f1", "SNR_h2_f2", "SNR_h2_f3", "SNR_h2_f4", "SNR_h2_f5"],
-    "LRT": ["LRT_f1", "LRT_f2", "LRT_f3", "LRT_f4", "LRT_f5"],
-}
+# col_names = {
+#     "CCA": ["CCA_f1", "CCA_f3", "CCA_f5"],
+#     "PSDA_h1": ["PSDA_h1_f1", "PSDA_h1_f2", "PSDA_h1_f3", "PSDA_h1_f4", "PSDA_h1_f5"],
+#     "PSDA_h2": ["PSDA_h2_f1", "PSDA_h2_f2", "PSDA_h2_f3", "PSDA_h2_f4", "PSDA_h2_f5"],
+#     # "PSDA_sum": ["PSDA_sum_f1", "PSDA_sum_f2", "PSDA_sum_f3"],
+#     "SNR_h1": ["SNR_h1_f1", "SNR_h1_f2", "SNR_h1_f3", "SNR_h1_f4", "SNR_h1_f5"],
+#     "SNR_h2": ["SNR_h2_f1", "SNR_h2_f2", "SNR_h2_f3", "SNR_h2_f4", "SNR_h2_f5"],
+#     "LRT": ["LRT_f1", "LRT_f2", "LRT_f3", "LRT_f4", "LRT_f5"],
+# }
 
 
 def readData(file_name, sep=" "):  # Is there ID???
@@ -114,7 +114,7 @@ all_data_matrix = []
 all_labels = []
 all_labels_binary = [[] for _ in range(target_count)]
 
-for file in [1,2]:
+for file in [1,2,3,5]:
     index = len(all_data_matrices)
     raw_data = readData("U:\\data\\my\\results1_2_target\\results" + str(file) + ".csv")
     # raw_data = readData("U:\\data\\my\\results1_2_target\\results4.csv")
@@ -135,7 +135,7 @@ for file in [1,2]:
     # print all_data_matrices[file][2][0]
 
     all_data_matrix.append(buildDataMatrix(raw_data).tolist())
-    # addRatio(all_data_matrices[index], all_data_matrix[index])
+    addRatio(all_data_matrices[index], all_data_matrix[index])
     # print all_data_matrices[index][0][0]
     # print all_data_matrices[index][1][0]
     # print all_data_matrices[index][2][0]
@@ -164,11 +164,19 @@ for file in [1,2]:
 
 data_matrix = np.concatenate(all_data_matrix)
 data_matrices = [
-    np.concatenate(map(lambda x: x[0], all_data_matrices)) for i in range(target_count)
+    np.concatenate(map(lambda x: x[i], all_data_matrices)) for i in range(target_count)
 ]
 labels = np.concatenate(all_labels)
 labels_binary = [np.concatenate(all_labels_binary[i]) for i in range(target_count)]
 
+# print len(all_data_matrices), len(all_data_matrices[0]), len(all_data_matrices[0][0]), len(all_data_matrices[0][0][0])
+# print len(data_matrices), len(data_matrices[0]), len(data_matrices[0][0])
+# print data_matrices[0][0]
+# print data_matrices[0][1]
+# print data_matrices[1][0]
+# print data_matrices[1][1]
+# print data_matrices[2][0]
+# print data_matrices[2][1]
 print data_matrix.shape
 
 for i in range(target_count):
@@ -180,7 +188,7 @@ for i in range(target_count):
 
 models = []
 for i in range(target_count):
-    models.append(RandomForestClassifier(n_estimators=10, max_depth=7))#, class_weight={True: 0.2, False:0.2})
+    models.append(RandomForestClassifier(n_estimators=10, max_depth=3))#, class_weight={True: 0.2, False:0.2})
 
 # model1 = AdaBoostClassifier(n_estimators=100)#, class_weight={True: 0.2, False:0.2})
 # model2 = AdaBoostClassifier(n_estimators=100)#, class_weight={True: 0.2, False:0.2})
@@ -232,7 +240,7 @@ print sklearn.metrics.confusion_matrix(labels, predicted)
 prediction = sklearn.cross_validation.cross_val_predict(model, data_matrix, labels, cv=5)
 print sklearn.metrics.confusion_matrix(labels, prediction)
 
-if target_count == 3:
+if target_count == 3 or True:
     x = model.transform(data_matrix)
 
     labels = np.array(labels)
