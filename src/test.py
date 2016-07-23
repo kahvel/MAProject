@@ -4,16 +4,30 @@ from sklearn.svm import SVC
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.feature_selection import VarianceThreshold, SelectKBest, chi2, RFECV
 import numpy as np
+import matplotlib.pyplot as plt
+import sklearn.cross_validation
+import sklearn.metrics
 
 
-group_names = ["CCA", "PSDA_h1", "PSDA_h2", "SNR_h1", "SNR_h2"]#, "PSDA_sum"]
+target_count = 5
+group_names = ["CCA", "LRT", "PSDA_h1", "PSDA_h2", "SNR_h1", "SNR_h2"]#, "PSDA_sum"]
 col_names = {
-    "CCA": ["CCA_f1", "CCA_f2", "CCA_f3"],
-    "PSDA_h1": ["PSDA_h1_f1", "PSDA_h1_f2", "PSDA_h1_f3"],
-    "PSDA_h2": ["PSDA_h2_f1", "PSDA_h2_f2", "PSDA_h2_f3"],
+    "CCA": ["CCA_f1", "CCA_f3", "CCA_f5"],
+    "PSDA_h1": ["PSDA_h1_f1", "PSDA_h1_f3", "PSDA_h1_f5"],
+    "PSDA_h2": ["PSDA_h2_f1", "PSDA_h2_f3", "PSDA_h2_f5"],
     # "PSDA_sum": ["PSDA_sum_f1", "PSDA_sum_f2", "PSDA_sum_f3"],
-    "SNR_h1": ["SNR_h1_f1", "SNR_h1_f2", "SNR_h1_f3"],
-    "SNR_h2": ["SNR_h2_f1", "SNR_h2_f2", "SNR_h2_f3"],
+    "SNR_h1": ["SNR_h1_f1", "SNR_h1_f3", "SNR_h1_f5"],
+    "SNR_h2": ["SNR_h2_f1", "SNR_h2_f3", "SNR_h2_f5"],
+    "LRT": ["LRT_f1", "LRT_f3", "LRT_f5"],
+}
+col_names = {
+    "CCA": ["CCA_f1", "CCA_f3", "CCA_f5"],
+    "PSDA_h1": ["PSDA_h1_f1", "PSDA_h1_f2", "PSDA_h1_f3", "PSDA_h1_f4", "PSDA_h1_f5"],
+    "PSDA_h2": ["PSDA_h2_f1", "PSDA_h2_f2", "PSDA_h2_f3", "PSDA_h2_f4", "PSDA_h2_f5"],
+    # "PSDA_sum": ["PSDA_sum_f1", "PSDA_sum_f2", "PSDA_sum_f3"],
+    "SNR_h1": ["SNR_h1_f1", "SNR_h1_f2", "SNR_h1_f3", "SNR_h1_f4", "SNR_h1_f5"],
+    "SNR_h2": ["SNR_h2_f1", "SNR_h2_f2", "SNR_h2_f3", "SNR_h2_f4", "SNR_h2_f5"],
+    "LRT": ["LRT_f1", "LRT_f2", "LRT_f3", "LRT_f4", "LRT_f5"],
 }
 
 
@@ -37,11 +51,11 @@ def buildDataMatrix(data):
 
 
 def buildDataMatrixPerTarget(data):
-    matrices = {target: [] for target in range(3)}
+    matrices = [[] for _ in range(target_count)]
     for group_name in group_names:
         for i, name in enumerate(col_names[group_name]):
             matrices[i].append(data[name])
-    for target in matrices:
+    for target in range(len(matrices)):
         matrices[target] = np.transpose(matrices[target])
     return matrices
 
@@ -85,82 +99,88 @@ def scale(data):
 
 
 def addRatio(data_matrices, data_matrix):
-    data_matrices[0] = data_matrices[0].tolist()
-    data_matrices[1] = data_matrices[1].tolist()
-    data_matrices[2] = data_matrices[2].tolist()
-    for i, rows in enumerate(zip(data_matrices[0], data_matrices[1], data_matrices[2])):
-        for features in zip(rows[0], rows[1], rows[2]):
+    for i in range(target_count):
+        data_matrices[i] = data_matrices[i].tolist()
+    for i, rows in enumerate(zip(*data_matrices)):
+        for features in zip(*rows):
             feature_sum = sum(features)
-            feature1 = features[0]/feature_sum
-            feature2 = features[1]/feature_sum
-            feature3 = features[2]/feature_sum
-            data_matrices[0][i].append(feature1)
-            data_matrices[1][i].append(feature2)
-            data_matrices[2][i].append(feature3)
-            data_matrix[i].extend([feature1, feature2, feature3])
+            feature = [features[j]/feature_sum for j in range(target_count)]
+            for j in range(target_count):
+                data_matrices[j][i].append(feature[j])
+            data_matrix[i].extend([feature[0], feature[1], feature[2]])
 
+all_data_matrices = []
+all_data_matrix = []
+all_labels = []
+all_labels_binary = [[] for _ in range(target_count)]
 
-raw_data = readData("U:\\data\\my\\3_75_results\\results01.csv")
-# raw_data = readData("U:\\data\\my\\results1_2_target\\results4.csv")
-print raw_data["CCA_f1"]
-print raw_data["CCA_f2"]
-print raw_data["CCA_f3"]
+for file in [1,2]:
+    index = len(all_data_matrices)
+    raw_data = readData("U:\\data\\my\\results1_2_target\\results" + str(file) + ".csv")
+    # raw_data = readData("U:\\data\\my\\results1_2_target\\results4.csv")
+    # print raw_data["CCA_f1"]
+    # print raw_data["CCA_f2"]
+    # print raw_data["CCA_f3"]
 
-labels = map(int, raw_data["class"])
+    labels = map(int, raw_data["class"])
 
-raw_data = scale(raw_data)
-print raw_data["CCA_f1"]
-print raw_data["CCA_f2"]
-print raw_data["CCA_f3"]
+    raw_data = scale(raw_data)
+    # print raw_data["CCA_f1"]
+    # print raw_data["CCA_f2"]
+    # print raw_data["CCA_f3"]
 
-data_matrices = buildDataMatrixPerTarget(raw_data)
-print data_matrices[0][0]
-print data_matrices[1][0]
-print data_matrices[2][0]
+    all_data_matrices.append(buildDataMatrixPerTarget(raw_data))
+    # print all_data_matrices[file][0][0]
+    # print all_data_matrices[file][1][0]
+    # print all_data_matrices[file][2][0]
 
-data_matrix = buildDataMatrix(raw_data).tolist()
+    all_data_matrix.append(buildDataMatrix(raw_data).tolist())
+    # addRatio(all_data_matrices[index], all_data_matrix[index])
+    # print all_data_matrices[index][0][0]
+    # print all_data_matrices[index][1][0]
+    # print all_data_matrices[index][2][0]
+    #
+    # print all_data_matrix[index][0]
 
-addRatio(data_matrices, data_matrix)
-print data_matrices[0][0]
-print data_matrices[1][0]
-print data_matrices[2][0]
+    look_back = 1
 
-print data_matrix[0]
+    for i in range(target_count):
+        all_data_matrices[index][i], _ = combineSamples(all_data_matrices[index][i], labels, look_back)
 
-look_back = 5
+    all_labels.append(None)
+    all_data_matrix[index], all_labels[index] = combineSamples(all_data_matrix[index], labels, look_back)
 
-data_matrices[0], _ = combineSamples(data_matrices[0], labels, look_back)
-data_matrices[1], _ = combineSamples(data_matrices[1], labels, look_back)
-data_matrices[2], _ = combineSamples(data_matrices[2], labels, look_back)
+    # print all_data_matrices[index][0][0]
+    # print all_data_matrices[index][1][0]
+    # print all_data_matrices[index][2][0]
+    # print all_labels[index]
+    # print len(all_labels[index])
+    # print all_data_matrix[index].shape
 
-data_matrix, labels = combineSamples(data_matrix, labels, look_back)
+    for i in range(target_count):
+        all_labels_binary[i].append(map(lambda x: x == i+1, all_labels[index]))
 
-print data_matrices[0][-1]
-print data_matrices[1][-1]
-print data_matrices[2][-1]
-print labels
-print len(labels)
+    # raw_input("done")
+
+data_matrix = np.concatenate(all_data_matrix)
+data_matrices = [
+    np.concatenate(map(lambda x: x[0], all_data_matrices)) for i in range(target_count)
+]
+labels = np.concatenate(all_labels)
+labels_binary = [np.concatenate(all_labels_binary[i]) for i in range(target_count)]
+
 print data_matrix.shape
 
-labels1 = map(lambda x: x == 1, labels)
-labels2 = map(lambda x: x == 2, labels)
-labels3 = map(lambda x: x == 3, labels)
-
-print map(int, labels1)
-print map(int, labels2)
-print map(int, labels3)
-
-print sum(labels1)
-print sum(labels2)
-print sum(labels3)
+for i in range(target_count):
+    print sum(labels_binary[i])
 
 # model1 = LinearDiscriminantAnalysis()
 # model2 = LinearDiscriminantAnalysis()
 # model3 = LinearDiscriminantAnalysis()
 
-model1 = RandomForestClassifier(n_estimators=10, max_depth=3)#, class_weight={True: 0.2, False:0.2})
-model2 = RandomForestClassifier(n_estimators=10, max_depth=3)#, class_weight={True: 0.2, False:0.2})
-model3 = RandomForestClassifier(n_estimators=10, max_depth=3)#, class_weight={True: 0.2, False:0.2})
+models = []
+for i in range(target_count):
+    models.append(RandomForestClassifier(n_estimators=10, max_depth=7))#, class_weight={True: 0.2, False:0.2})
 
 # model1 = AdaBoostClassifier(n_estimators=100)#, class_weight={True: 0.2, False:0.2})
 # model2 = AdaBoostClassifier(n_estimators=100)#, class_weight={True: 0.2, False:0.2})
@@ -170,43 +190,30 @@ model3 = RandomForestClassifier(n_estimators=10, max_depth=3)#, class_weight={Tr
 # model2 = KNeighborsClassifier(n_neighbors=20)
 # model3 = KNeighborsClassifier(n_neighbors=20)
 
-sample_weight1 = np.array(map(lambda x: 0.5 if x == 1 else 0.2, labels1))
-sample_weight2 = np.array(map(lambda x: 0.5 if x == 1 else 0.2, labels2))
-sample_weight3 = np.array(map(lambda x: 0.5 if x == 1 else 0.2, labels3))
+sample_weights = []
+for i in range(target_count):
+    sample_weights.append(np.array(map(lambda x: 0.5 if x == 1 else 0.2, labels_binary[i])))
 # print sample_weight1
 
-model1.fit(data_matrices[0], labels1)#, sample_weight=sample_weight1)
-model2.fit(data_matrices[1], labels2)#, sample_weight=sample_weight2)
-model3.fit(data_matrices[2], labels3)#, sample_weight=sample_weight3)
+for i in range(target_count):
+    models[i].fit(data_matrices[i], labels_binary[i])#, sample_weight=sample_weight1)
 
-predicted1 = model1.predict(data_matrices[0])
-predicted2 = model2.predict(data_matrices[1])
-predicted3 = model3.predict(data_matrices[2])
+predicted = []
+for i in range(target_count):
+    predicted.append(models[i].predict(data_matrices[i]))
 
-import sklearn.metrics
 
 # print predicted
-print "1"
-print sklearn.metrics.confusion_matrix(labels1, predicted1)
-print "2"
-print sklearn.metrics.confusion_matrix(labels2, predicted2)
-print "3"
-print sklearn.metrics.confusion_matrix(labels3, predicted3)
-
-import sklearn.cross_validation
-
-prediction21 = sklearn.cross_validation.cross_val_predict(model1, data_matrices[0], labels1, cv=5)#, fit_params={"sample_weight": sample_weight1})
-prediction22 = sklearn.cross_validation.cross_val_predict(model2, data_matrices[1], labels2, cv=5)#, fit_params={"sample_weight": sample_weight2})
-prediction23 = sklearn.cross_validation.cross_val_predict(model3, data_matrices[2], labels3, cv=5)#, fit_params={"sample_weight": sample_weight3})
-print "CV 1"
-print sklearn.metrics.confusion_matrix(labels1, prediction21)
-print "CV 2"
-print sklearn.metrics.confusion_matrix(labels2, prediction22)
-print "CV 3"
-print sklearn.metrics.confusion_matrix(labels3, prediction23)
+for i in range(target_count):
+    print i
+    print sklearn.metrics.confusion_matrix(labels_binary[i], predicted[i])
 
 
-import matplotlib.pyplot as plt
+prediction = []
+for i in range(target_count):
+    prediction.append(sklearn.cross_validation.cross_val_predict(models[i], data_matrices[i], labels_binary[i], cv=5))#, fit_params={"sample_weight": sample_weight1})
+    print "CV " + str(i)
+    print sklearn.metrics.confusion_matrix(labels_binary[i], prediction[i])
 
 
 model = LinearDiscriminantAnalysis()
@@ -225,14 +232,15 @@ print sklearn.metrics.confusion_matrix(labels, predicted)
 prediction = sklearn.cross_validation.cross_val_predict(model, data_matrix, labels, cv=5)
 print sklearn.metrics.confusion_matrix(labels, prediction)
 
-x = model.transform(data_matrix)
+if target_count == 3:
+    x = model.transform(data_matrix)
 
-labels = np.array(labels)
+    labels = np.array(labels)
 
-plt.figure()
-for c, i, target_name in zip("rgb", [1, 2, 3], [1, 2, 3]):
-    plt.scatter(x[labels == i, 0], x[labels == i, 1], c=c, label=target_name)
-plt.legend()
-plt.title('LDA')
+    plt.figure()
+    for c, i, target_name in zip("rgb", [1, 2, 3], [1, 2, 3]):
+        plt.scatter(x[labels == i, 0], x[labels == i, 1], c=c, label=target_name)
+    plt.legend()
+    plt.title('LDA')
 
-plt.show()
+    plt.show()
