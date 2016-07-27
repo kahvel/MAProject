@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sklearn.cross_validation
 import sklearn.metrics
+import scipy
 
 
 target_count = 3
@@ -20,6 +21,15 @@ col_names = {
     "SNR_h2": ["SNR_h2_f1", "SNR_h2_f3", "SNR_h2_f5"],
     "LRT": ["LRT_f1", "LRT_f3", "LRT_f5"],
 }
+# col_names = {
+#     "CCA": ["CCA_f1", "CCA_f2", "CCA_f3"],
+#     "PSDA_h1": ["PSDA_h1_f1", "PSDA_h1_f2", "PSDA_h1_f3"],
+#     "PSDA_h2": ["PSDA_h2_f1", "PSDA_h2_f2", "PSDA_h2_f3"],
+#     # "PSDA_sum": ["PSDA_sum_f1", "PSDA_sum_f2", "PSDA_sum_f3"],
+#     "SNR_h1": ["SNR_h1_f1", "SNR_h1_f2", "SNR_h1_f3"],
+#     "SNR_h2": ["SNR_h2_f1", "SNR_h2_f2", "SNR_h2_f3"],
+#     "LRT": ["LRT_f1", "LRT_f2", "LRT_f3"],
+# }
 # col_names = {
 #     "CCA": ["CCA_f1", "CCA_f3", "CCA_f5"],
 #     "PSDA_h1": ["PSDA_h1_f1", "PSDA_h1_f2", "PSDA_h1_f3", "PSDA_h1_f4", "PSDA_h1_f5"],
@@ -109,113 +119,77 @@ def addRatio(data_matrices, data_matrix):
                 data_matrices[j][i].append(feature[j])
             data_matrix[i].extend([feature[0], feature[1], feature[2]])
 
-all_data_matrices = []
-all_data_matrix = []
-all_labels = []
-all_labels_binary = [[] for _ in range(target_count)]
 
-for file in [1,2,3,5]:
-    index = len(all_data_matrices)
-    raw_data = readData("U:\\data\\my\\results1_2_target\\results" + str(file) + ".csv")
-    # raw_data = readData("U:\\data\\my\\results1_2_target\\results4.csv")
-    # print raw_data["CCA_f1"]
-    # print raw_data["CCA_f2"]
-    # print raw_data["CCA_f3"]
+def readDataCalculateFeatures(file_numbers):
+    all_data_matrices = []
+    all_data_matrix = []
+    all_labels = []
+    all_labels_binary = [[] for _ in range(target_count)]
 
-    labels = map(int, raw_data["class"])
+    for file in file_numbers:
+        index = len(all_data_matrices)
+        raw_data = readData("U:\\data\\my\\results1_2_target\\results" + str(file) + ".csv")
+        # raw_data = readData("U:\\data\\my\\3_75_results\\results01.csv")
 
-    raw_data = scale(raw_data)
-    # print raw_data["CCA_f1"]
-    # print raw_data["CCA_f2"]
-    # print raw_data["CCA_f3"]
+        labels = map(int, raw_data["class"])
 
-    all_data_matrices.append(buildDataMatrixPerTarget(raw_data))
-    # print all_data_matrices[file][0][0]
-    # print all_data_matrices[file][1][0]
-    # print all_data_matrices[file][2][0]
+        raw_data = scale(raw_data)
 
-    all_data_matrix.append(buildDataMatrix(raw_data).tolist())
-    addRatio(all_data_matrices[index], all_data_matrix[index])
-    # print all_data_matrices[index][0][0]
-    # print all_data_matrices[index][1][0]
-    # print all_data_matrices[index][2][0]
-    #
-    # print all_data_matrix[index][0]
+        all_data_matrices.append(buildDataMatrixPerTarget(raw_data))
 
-    look_back = 1
+        all_data_matrix.append(buildDataMatrix(raw_data).tolist())
+        addRatio(all_data_matrices[index], all_data_matrix[index])
 
-    for i in range(target_count):
-        all_data_matrices[index][i], _ = combineSamples(all_data_matrices[index][i], labels, look_back)
+        to_delete = 18
+        all_data_matrix[index] = np.delete(all_data_matrix[index], [i for i in range(to_delete)], 1)
+        for j in range(target_count):
+            all_data_matrices[index][j] = np.delete(all_data_matrices[index][j], [i for i in range(to_delete/3)], 1)
 
-    all_labels.append(None)
-    all_data_matrix[index], all_labels[index] = combineSamples(all_data_matrix[index], labels, look_back)
+        look_back = 10
 
-    # print all_data_matrices[index][0][0]
-    # print all_data_matrices[index][1][0]
-    # print all_data_matrices[index][2][0]
-    # print all_labels[index]
-    # print len(all_labels[index])
-    # print all_data_matrix[index].shape
+        for i in range(target_count):
+            all_data_matrices[index][i], _ = combineSamples(all_data_matrices[index][i], labels, look_back)
 
-    for i in range(target_count):
-        all_labels_binary[i].append(map(lambda x: x == i+1, all_labels[index]))
+        all_labels.append(None)
+        all_data_matrix[index], all_labels[index] = combineSamples(all_data_matrix[index], labels, look_back)
 
-    # raw_input("done")
+        for i in range(target_count):
+            all_labels_binary[i].append(map(lambda x: x == i+1, all_labels[index]))
+    return np.concatenate(all_data_matrix), [
+                np.concatenate(map(lambda x: x[i], all_data_matrices)) for i in range(target_count)
+            ], np.concatenate(all_labels), [np.concatenate(all_labels_binary[i]) for i in range(target_count)]
 
-data_matrix = np.concatenate(all_data_matrix)
-data_matrices = [
-    np.concatenate(map(lambda x: x[i], all_data_matrices)) for i in range(target_count)
-]
-labels = np.concatenate(all_labels)
-labels_binary = [np.concatenate(all_labels_binary[i]) for i in range(target_count)]
 
-# print len(all_data_matrices), len(all_data_matrices[0]), len(all_data_matrices[0][0]), len(all_data_matrices[0][0][0])
-# print len(data_matrices), len(data_matrices[0]), len(data_matrices[0][0])
-# print data_matrices[0][0]
-# print data_matrices[0][1]
-# print data_matrices[1][0]
-# print data_matrices[1][1]
-# print data_matrices[2][0]
-# print data_matrices[2][1]
+data_matrix, data_matrices, labels, labels_binary = readDataCalculateFeatures([1,2,3,5])
+
 print data_matrix.shape
+print data_matrices[0].shape, data_matrices[1].shape
 
 for i in range(target_count):
     print sum(labels_binary[i])
 
-# model1 = LinearDiscriminantAnalysis()
-# model2 = LinearDiscriminantAnalysis()
-# model3 = LinearDiscriminantAnalysis()
-
 models = []
 for i in range(target_count):
-    models.append(RandomForestClassifier(n_estimators=10, max_depth=3))#, class_weight={True: 0.2, False:0.2})
-
-# model1 = AdaBoostClassifier(n_estimators=100)#, class_weight={True: 0.2, False:0.2})
-# model2 = AdaBoostClassifier(n_estimators=100)#, class_weight={True: 0.2, False:0.2})
-# model3 = AdaBoostClassifier(n_estimators=100)#, class_weight={True: 0.2, False:0.2})
-
-# model1 = KNeighborsClassifier(n_neighbors=20)
-# model2 = KNeighborsClassifier(n_neighbors=20)
-# model3 = KNeighborsClassifier(n_neighbors=20)
+    # models.append(RandomForestClassifier(n_estimators=10, max_depth=int(sum(labels_binary[i])/100)+1))#, class_weight={True: 0.2, False:0.2})
+    # models.append(AdaBoostClassifier(n_estimators=50))#, class_weight={True: 0.2, False:0.2})
+    # models.append(KNeighborsClassifier(n_neighbors=10))
+    models.append(LinearDiscriminantAnalysis())
+    models[-1].classes_ = [False, True]
 
 sample_weights = []
 for i in range(target_count):
     sample_weights.append(np.array(map(lambda x: 0.5 if x == 1 else 0.2, labels_binary[i])))
-# print sample_weight1
 
 for i in range(target_count):
-    models[i].fit(data_matrices[i], labels_binary[i])#, sample_weight=sample_weight1)
+    models[i].fit(data_matrices[i], labels_binary[i])#, sample_weight=sample_weights[i])
 
 predicted = []
 for i in range(target_count):
     predicted.append(models[i].predict(data_matrices[i]))
 
-
-# print predicted
 for i in range(target_count):
     print i
     print sklearn.metrics.confusion_matrix(labels_binary[i], predicted[i])
-
 
 prediction = []
 for i in range(target_count):
@@ -223,32 +197,126 @@ for i in range(target_count):
     print "CV " + str(i)
     print sklearn.metrics.confusion_matrix(labels_binary[i], prediction[i])
 
+# use_prediction = True
+# test_data_matrix, test_data_matrices, test_labels, test_labels_binary = readDataCalculateFeatures([11])
+# test_predictions = []
+# for i, target_data in enumerate(test_data_matrices):
+#     test_prediction = []
+#     for features in target_data:
+#         if not use_prediction:
+#             test_prediction.append(models[i].decision_function([features])[0])  # score for classes_[1]
+#         else:
+#             test_prediction.append(models[i].predict_proba([features])[0])
+#     test_predictions.append(test_prediction)
+#
+# if use_prediction:
+#     test_predictions = map(lambda matrix: map(lambda x: x[1], matrix), test_predictions)  # take proba for classes_[1]
+# print test_predictions
+#
+# plt.figure()
+# thresholds = []
+# for i in range(target_count):
+#     fpr, tpr, threshold = sklearn.metrics.roc_curve(test_labels_binary[i], test_predictions[i], pos_label=True)
+#     plt.subplot(2, 2, i+1)
+#     plt.plot(fpr, tpr)
+# #     thresholds.append(threshold)
+# #     print len(threshold)
+# #
+# # for i, pred in enumerate(zip(*test_predictions)):
+# #     print i, pred, test_labels[i], np.argmax(pred)
 
-model = LinearDiscriminantAnalysis()
-model.fit(data_matrix, labels)
 
-# feature_selector = RFECV(estimator=model)
-# # feature_selector = SelectKBest(score_func=chi2, k=20)
-# feature_selector.fit(data_matrix, labels)
-# data_matrix = feature_selector.transform(data_matrix)
-# print data_matrix.shape
-# model.fit(data_matrix, labels)
+def test_model(model):
+    model.fit(data_matrix, labels)
+    # feature_selector = RFECV(estimator=model)
+    # # feature_selector = SelectKBest(score_func=chi2, k=20)
+    # feature_selector.fit(data_matrix, labels)
+    # data_matrix = feature_selector.transform(data_matrix)
+    # print data_matrix.shape
+    # model.fit(data_matrix, labels)
+    predicted = model.predict(data_matrix)
+    print sklearn.metrics.confusion_matrix(labels, predicted)
+    prediction = sklearn.cross_validation.cross_val_predict(model, data_matrix, labels, cv=5)
+    print sklearn.metrics.confusion_matrix(labels, prediction)
 
-predicted = model.predict(data_matrix)
-print sklearn.metrics.confusion_matrix(labels, predicted)
 
-prediction = sklearn.cross_validation.cross_val_predict(model, data_matrix, labels, cv=5)
-print sklearn.metrics.confusion_matrix(labels, prediction)
+def plot_lda(model, labels):
+    if target_count == 3 or True:
+        x = model.transform(data_matrix)
+        labels = np.array(labels)
+        plt.figure()
+        for c, i, target_name in zip("rgb", [1, 2, 3], [1, 2, 3]):
+            plt.scatter(x[labels == i, 0], x[labels == i, 1], c=c, label=target_name, marker="o")
+        plt.legend()
+        plt.title('LDA')
 
-if target_count == 3 or True:
-    x = model.transform(data_matrix)
 
-    labels = np.array(labels)
+def multiclassRoc(test_predictions, test_labels_binary):
+    test_predictions = np.transpose(test_predictions)
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    for i in range(target_count):
+        fpr[i], tpr[i], _ = sklearn.metrics.roc_curve(test_labels_binary[i], test_predictions[i])
+        roc_auc[i] = sklearn.metrics.auc(fpr[i], tpr[i])
+    fpr["micro"], tpr["micro"], _ = sklearn.metrics.roc_curve(np.array(test_labels_binary).ravel(), test_predictions.ravel())
+    roc_auc["micro"] = sklearn.metrics.auc(fpr["micro"], tpr["micro"])
+    all_fpr = np.unique(np.concatenate([fpr[i] for i in range(target_count)]))
+    mean_tpr = np.zeros_like(all_fpr)
+    for i in range(target_count):
+        mean_tpr += scipy.interp(all_fpr, fpr[i], tpr[i])
+    mean_tpr /= target_count
 
+    fpr["macro"] = all_fpr
+    tpr["macro"] = mean_tpr
+    roc_auc["macro"] = sklearn.metrics.auc(fpr["macro"], tpr["macro"])
     plt.figure()
-    for c, i, target_name in zip("rgb", [1, 2, 3], [1, 2, 3]):
-        plt.scatter(x[labels == i, 0], x[labels == i, 1], c=c, label=target_name)
-    plt.legend()
-    plt.title('LDA')
+    plt.plot(fpr["micro"], tpr["micro"],
+             label='micro-average ROC curve (area = {0:0.2f})'
+                   ''.format(roc_auc["micro"]),
+             linewidth=2)
+    plt.plot(fpr["macro"], tpr["macro"],
+             label='macro-average ROC curve (area = {0:0.2f})'
+                   ''.format(roc_auc["macro"]),
+             linewidth=2)
+    for i in range(target_count):
+        plt.plot(fpr[i], tpr[i], label='ROC curve of class {0} (area = {1:0.2f})'
+                                       ''.format(i, roc_auc[i]))
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Some extension of Receiver operating characteristic to multi-class')
+    plt.legend(loc="lower right")
 
-    plt.show()
+
+model = RandomForestClassifier(n_estimators=10, max_depth=3)
+print "Random Forest"
+test_model(model)
+
+model_lda = LinearDiscriminantAnalysis()
+print "LDA"
+test_model(model_lda)
+
+use_prediction = False
+test_data_matrix, test_data_matrices, test_labels, test_labels_binary = readDataCalculateFeatures([6,7,8])
+test_predictions = []
+for features in test_data_matrix:
+    if not use_prediction:
+        test_predictions.append(model_lda.decision_function([features])[0])  # score for classes_[1]
+    else:
+        test_predictions.append(model_lda.predict_proba([features])[0])
+
+for i in range(target_count):
+    print sum(test_labels_binary[i])
+
+multiclassRoc(test_predictions, test_labels_binary)
+
+# model = SVC(C=1000, kernel="poly", degree=2)
+# print "SVM"
+# test_model(model)
+
+
+plot_lda(model_lda, labels)
+plt.show()
