@@ -12,7 +12,7 @@ import pickle
 
 
 target_count = 3
-group_names = ["CCA", "LRT", "PSDA_h1", "PSDA_h2", "SNR_h1", "SNR_h2"]#, "PSDA_sum"]
+group_names = ["CCA", "PSDA_h1", "PSDA_h2"]#, "PSDA_sum"]
 col_names = {
     "CCA": ["CCA_f1", "CCA_f3", "CCA_f5"],
     "PSDA_h1": ["PSDA_h1_f1", "PSDA_h1_f3", "PSDA_h1_f5"],
@@ -141,10 +141,10 @@ def readDataCalculateFeatures(file_numbers):
         all_data_matrix.append(buildDataMatrix(raw_data).tolist())
         addRatio(all_data_matrices[index], all_data_matrix[index])
 
-        # to_delete = 18
-        # all_data_matrix[index] = np.delete(all_data_matrix[index], [i for i in range(to_delete)], 1)
-        # for j in range(target_count):
-        #     all_data_matrices[index][j] = np.delete(all_data_matrices[index][j], [i for i in range(to_delete/3)], 1)
+        to_delete = 9
+        all_data_matrix[index] = np.delete(all_data_matrix[index], [i for i in range(to_delete)], 1)
+        for j in range(target_count):
+            all_data_matrices[index][j] = np.delete(all_data_matrices[index][j], [i for i in range(to_delete/3)], 1)
 
         look_back = 10
 
@@ -256,10 +256,17 @@ def multiclassRoc(test_predictions, test_labels_binary):
     test_predictions = np.transpose(test_predictions)
     fpr = dict()
     tpr = dict()
+    thresholds = dict()
     roc_auc = dict()
     for i in range(target_count):
-        fpr[i], tpr[i], _ = sklearn.metrics.roc_curve(test_labels_binary[i], test_predictions[i])
+        fpr[i], tpr[i], thresholds[i] = sklearn.metrics.roc_curve(test_labels_binary[i], test_predictions[i])
         roc_auc[i] = sklearn.metrics.auc(fpr[i], tpr[i])
+    for i in range(target_count):
+        print i
+        for false_positive_rate, true_positive_rate, threshold in zip(fpr[i], tpr[i], thresholds[i]):
+            if false_positive_rate > 0.05:
+                print false_positive_rate, true_positive_rate, threshold
+                break
     fpr["micro"], tpr["micro"], _ = sklearn.metrics.roc_curve(np.array(test_labels_binary).ravel(), test_predictions.ravel())
     roc_auc["micro"] = sklearn.metrics.auc(fpr["micro"], tpr["micro"])
     all_fpr = np.unique(np.concatenate([fpr[i] for i in range(target_count)]))
@@ -318,8 +325,16 @@ multiclassRoc(test_predictions, test_labels_binary)
 # print "SVM"
 # test_model(model)
 
-pickle.Pickler(file("U:\\data\\my\\pickle\\model1.pkl", "w")).dump(model_lda)
+# pickle.Pickler(file("U:\\data\\my\\pickle\\model1.pkl", "w")).dump(model_lda)
 
+# print model_lda.coef_
+# plt.figure()
+# # plt.subplot(2,2,1)
+# plt.scatter(range(len(model_lda.coef_[0])), model_lda.coef_[0], c="b")
+# # plt.subplot(2,2,2)
+# plt.scatter(range(len(model_lda.coef_[1])), model_lda.coef_[1], c="g")
+# # plt.subplot(2,2,3)
+# plt.scatter(range(len(model_lda.coef_[2])), model_lda.coef_[2], c="r")
 plot_lda(model_lda, labels, data_matrix)
 plot_lda(model_lda, test_labels, test_data_matrix)
 plt.show()
