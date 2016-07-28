@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import sklearn.cross_validation
 import sklearn.metrics
 import scipy
+import pickle
 
 
 target_count = 3
@@ -140,10 +141,10 @@ def readDataCalculateFeatures(file_numbers):
         all_data_matrix.append(buildDataMatrix(raw_data).tolist())
         addRatio(all_data_matrices[index], all_data_matrix[index])
 
-        to_delete = 18
-        all_data_matrix[index] = np.delete(all_data_matrix[index], [i for i in range(to_delete)], 1)
-        for j in range(target_count):
-            all_data_matrices[index][j] = np.delete(all_data_matrices[index][j], [i for i in range(to_delete/3)], 1)
+        # to_delete = 18
+        # all_data_matrix[index] = np.delete(all_data_matrix[index], [i for i in range(to_delete)], 1)
+        # for j in range(target_count):
+        #     all_data_matrices[index][j] = np.delete(all_data_matrices[index][j], [i for i in range(to_delete/3)], 1)
 
         look_back = 10
 
@@ -160,7 +161,7 @@ def readDataCalculateFeatures(file_numbers):
             ], np.concatenate(all_labels), [np.concatenate(all_labels_binary[i]) for i in range(target_count)]
 
 
-data_matrix, data_matrices, labels, labels_binary = readDataCalculateFeatures([1,2,3,5])
+data_matrix, data_matrices, labels, labels_binary = readDataCalculateFeatures([1,2,3,5,6,7,8,9,10,12,13,14,15])
 
 print data_matrix.shape
 print data_matrices[0].shape, data_matrices[1].shape
@@ -236,11 +237,11 @@ def test_model(model):
     # model.fit(data_matrix, labels)
     predicted = model.predict(data_matrix)
     print sklearn.metrics.confusion_matrix(labels, predicted)
-    prediction = sklearn.cross_validation.cross_val_predict(model, data_matrix, labels, cv=5)
+    prediction = sklearn.cross_validation.cross_val_predict(model, data_matrix, labels, cv=10)
     print sklearn.metrics.confusion_matrix(labels, prediction)
 
 
-def plot_lda(model, labels):
+def plot_lda(model, labels, data_matrix):
     if target_count == 3 or True:
         x = model.transform(data_matrix)
         labels = np.array(labels)
@@ -300,7 +301,7 @@ print "LDA"
 test_model(model_lda)
 
 use_prediction = False
-test_data_matrix, test_data_matrices, test_labels, test_labels_binary = readDataCalculateFeatures([6,7,8])
+test_data_matrix, test_data_matrices, test_labels, test_labels_binary = readDataCalculateFeatures([11])
 test_predictions = []
 for features in test_data_matrix:
     if not use_prediction:
@@ -317,6 +318,9 @@ multiclassRoc(test_predictions, test_labels_binary)
 # print "SVM"
 # test_model(model)
 
+pickle.Pickler(file("U:\\data\\my\\pickle\\model1.pkl", "w")).dump(model_lda)
 
-plot_lda(model_lda, labels)
+plot_lda(model_lda, labels, data_matrix)
+plot_lda(model_lda, test_labels, test_data_matrix)
 plt.show()
+
