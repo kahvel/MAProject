@@ -94,8 +94,8 @@ def combineSamples(data, labels, sample_count):
     # return new_data
 
 
-def scale(data):
-    scaled_data = {}
+def getMinMax(data):
+    min_max = {}
     for group in group_names:
         mins = []
         maxs = []
@@ -104,8 +104,23 @@ def scale(data):
             maxs.append(max(data[name]))
         minimum = min(mins)
         maximum = max(maxs)
+        min_max[group] = (minimum, maximum)
+    return min_max
+
+
+def getScalingFunction(min_max):
+    functions = {}
+    for group in group_names:
+        minimum, maximum = min_max[group]
+        functions[group] = lambda x: (x-minimum)/(maximum-minimum)
+    return functions
+
+
+def scale(data, functions):
+    scaled_data = {}
+    for group in group_names:
         for name in col_names[group]:
-            scaled_data[name] = list(map(lambda x: (x-minimum)/(maximum-minimum), data[name]))
+            scaled_data[name] = list(map(functions[group], data[name]))
     return scaled_data
 
 
@@ -121,47 +136,49 @@ def addRatio(data_matrices, data_matrix):
             data_matrix[i].extend([feature[0], feature[1], feature[2]])
 
 
-def readDataCalculateFeatures(file_numbers):
-    all_data_matrices = []
-    all_data_matrix = []
-    all_labels = []
-    all_labels_binary = [[] for _ in range(target_count)]
-
+def readDataMultipleFiles(file_numbers):
+    all_raw_data = {}
     for file in file_numbers:
-        index = len(all_data_matrices)
         raw_data = readData("U:\\data\\my\\results1_2_target\\results" + str(file) + ".csv")
         # raw_data = readData("U:\\data\\my\\3_75_results\\results01.csv")
-
-        labels = map(int, raw_data["class"])
-
-        raw_data = scale(raw_data)
-
-        all_data_matrices.append(buildDataMatrixPerTarget(raw_data))
-
-        all_data_matrix.append(buildDataMatrix(raw_data).tolist())
-        addRatio(all_data_matrices[index], all_data_matrix[index])
-
-        to_delete = 9
-        all_data_matrix[index] = np.delete(all_data_matrix[index], [i for i in range(to_delete)], 1)
-        for j in range(target_count):
-            all_data_matrices[index][j] = np.delete(all_data_matrices[index][j], [i for i in range(to_delete/3)], 1)
-
-        look_back = 10
-
-        for i in range(target_count):
-            all_data_matrices[index][i], _ = combineSamples(all_data_matrices[index][i], labels, look_back)
-
-        all_labels.append(None)
-        all_data_matrix[index], all_labels[index] = combineSamples(all_data_matrix[index], labels, look_back)
-
-        for i in range(target_count):
-            all_labels_binary[i].append(map(lambda x: x == i+1, all_labels[index]))
-    return np.concatenate(all_data_matrix), [
-                np.concatenate(map(lambda x: x[i], all_data_matrices)) for i in range(target_count)
-            ], np.concatenate(all_labels), [np.concatenate(all_labels_binary[i]) for i in range(target_count)]
+        for key in raw_data:
+            if key in all_raw_data:
+                all_raw_data[key].extend(raw_data[key])
+            else:
+                all_raw_data[key] = raw_data[key]
+    labels = map(int, all_raw_data["class"])
+    return all_raw_data, labels
 
 
-data_matrix, data_matrices, labels, labels_binary = readDataCalculateFeatures([1,2,3,5,6,7,8,9,10,12,13,14,15])
+def buildMatricesAndLabels(all_raw_data, labels, scaling_functions):
+    raw_data = scale(all_raw_data, scaling_functions)
+
+    data_matrices = buildDataMatrixPerTarget(raw_data)
+
+    data_matrix = buildDataMatrix(raw_data).tolist()
+    addRatio(data_matrices, data_matrix)
+
+    to_delete = 9
+    data_matrix = np.delete(data_matrix, [i for i in range(to_delete)], 1)
+    for j in range(target_count):
+        data_matrices[j] = np.delete(data_matrices[j], [i for i in range(to_delete/3)], 1)
+
+    look_back = 10
+
+    for i in range(target_count):
+        data_matrices[i], _ = combineSamples(data_matrices[i], labels, look_back)
+
+    data_matrix, labels = combineSamples(data_matrix, labels, look_back)
+
+    labels_binary = []
+    for i in range(target_count):
+        labels_binary.append(map(lambda x: x == i+1, labels))
+    return data_matrix, data_matrices, labels, labels_binary
+
+
+raw_data, labels = readDataMultipleFiles([1,2,3,5,6,7,8,9,10,12,13,14,15])
+scaling_functions = getScalingFunction(getMinMax(raw_data))
+data_matrix, data_matrices, labels, labels_binary = buildMatricesAndLabels(raw_data, labels, scaling_functions)
 
 print data_matrix.shape
 print data_matrices[0].shape, data_matrices[1].shape
@@ -199,7 +216,7 @@ for i in range(target_count):
     print sklearn.metrics.confusion_matrix(labels_binary[i], prediction[i])
 
 # use_prediction = True
-# test_data_matrix, test_data_matrices, test_labels, test_labels_binary = readDataCalculateFeatures([11])
+# test_data_matrix, test_data_matrices, test_labels, test_labels_binary = buildMatricesAndLabels([11])
 # test_predictions = []
 # for i, target_data in enumerate(test_data_matrices):
 #     test_prediction = []
@@ -308,7 +325,8 @@ print "LDA"
 test_model(model_lda)
 
 use_prediction = False
-test_data_matrix, test_data_matrices, test_labels, test_labels_binary = readDataCalculateFeatures([11])
+raw_test_data, test_labels = readDataMultipleFiles([11])
+test_data_matrix, test_data_matrices, test_labels, test_labels_binary = buildMatricesAndLabels(raw_test_data, test_labels, scaling_functions)
 test_predictions = []
 for features in test_data_matrix:
     if not use_prediction:
