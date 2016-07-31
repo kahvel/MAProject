@@ -161,7 +161,7 @@ def buildMatricesAndLabels(all_raw_data, labels, scaling_functions):
     to_delete = 9
     data_matrix = np.delete(data_matrix, [i for i in range(to_delete)], 1)
     for j in range(target_count):
-        data_matrices[j] = np.delete(data_matrices[j], [i for i in range(to_delete/3)], 1)
+        data_matrices[j] = np.delete(data_matrices[j], [i for i in range(to_delete/target_count)], 1)
 
     look_back = 10
 
@@ -177,7 +177,8 @@ def buildMatricesAndLabels(all_raw_data, labels, scaling_functions):
 
 
 raw_data, labels = readDataMultipleFiles([1,2,3,5,6,7,8,9,10,12,13,14,15])
-scaling_functions = getScalingFunction(getMinMax(raw_data))
+min_max = getMinMax(raw_data)
+scaling_functions = getScalingFunction(min_max)
 data_matrix, data_matrices, labels, labels_binary = buildMatricesAndLabels(raw_data, labels, scaling_functions)
 
 print data_matrix.shape
@@ -343,7 +344,8 @@ multiclassRoc(test_predictions, test_labels_binary)
 # print "SVM"
 # test_model(model)
 
-# pickle.Pickler(file("U:\\data\\my\\pickle\\model1.pkl", "w")).dump(model_lda)
+# pickle.Pickler(file("U:\\data\\my\\pickle\\model11.pkl", "w")).dump(model_lda)
+# pickle.Pickler(file("U:\\data\\my\\pickle\\model11_mm.pkl", "w")).dump(min_max)
 
 # print model_lda.coef_
 # plt.figure()
