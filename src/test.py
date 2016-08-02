@@ -32,7 +32,7 @@ col_names = {
 #     "LRT": ["LRT_f1", "LRT_f2", "LRT_f3"],
 # }
 # col_names = {
-#     "CCA": ["CCA_f1", "CCA_f3", "CCA_f5"],
+#     "CCA": ["CCA_f1", "CCA_f2", "CCA_f3", "CCA_f4", "CCA_f5"],
 #     "PSDA_h1": ["PSDA_h1_f1", "PSDA_h1_f2", "PSDA_h1_f3", "PSDA_h1_f4", "PSDA_h1_f5"],
 #     "PSDA_h2": ["PSDA_h2_f1", "PSDA_h2_f2", "PSDA_h2_f3", "PSDA_h2_f4", "PSDA_h2_f5"],
 #     # "PSDA_sum": ["PSDA_sum_f1", "PSDA_sum_f2", "PSDA_sum_f3"],
@@ -139,7 +139,7 @@ def addRatio(data_matrices, data_matrix):
 def readDataMultipleFiles(file_numbers):
     all_raw_data = {}
     for file in file_numbers:
-        raw_data = readData("U:\\data\\my\\results1_2_target\\results" + str(file) + ".csv")
+        raw_data = readData("U:\\data\\test\\5_targets\\result" + str(file) + ".csv")
         # raw_data = readData("U:\\data\\my\\3_75_results\\results01.csv")
         for key in raw_data:
             if key in all_raw_data:
@@ -176,7 +176,7 @@ def buildMatricesAndLabels(all_raw_data, labels, scaling_functions):
     return data_matrix, data_matrices, labels, labels_binary
 
 
-raw_data, labels = readDataMultipleFiles([1,2,3,5,6,7,8,9,10,12,13,14,15])
+raw_data, labels = readDataMultipleFiles([2,3,4])
 min_max = getMinMax(raw_data)
 scaling_functions = getScalingFunction(min_max)
 data_matrix, data_matrices, labels, labels_binary = buildMatricesAndLabels(raw_data, labels, scaling_functions)
@@ -260,7 +260,7 @@ def test_model(model):
 
 
 def plot_lda(model, labels, data_matrix):
-    if target_count == 3 or True:
+    if target_count == 3:
         x = model.transform(data_matrix)
         labels = np.array(labels)
         plt.figure()
@@ -276,6 +276,7 @@ def multiclassRoc(test_predictions, test_labels_binary):
     tpr = dict()
     thresholds = dict()
     roc_auc = dict()
+    thresholds_for_bci = []
     for i in range(target_count):
         fpr[i], tpr[i], thresholds[i] = sklearn.metrics.roc_curve(test_labels_binary[i], test_predictions[i])
         roc_auc[i] = sklearn.metrics.auc(fpr[i], tpr[i])
@@ -284,6 +285,7 @@ def multiclassRoc(test_predictions, test_labels_binary):
         for false_positive_rate, true_positive_rate, threshold in zip(fpr[i], tpr[i], thresholds[i]):
             if false_positive_rate > 0.05:
                 print false_positive_rate, true_positive_rate, threshold
+                thresholds_for_bci.append(threshold)
                 break
     fpr["micro"], tpr["micro"], _ = sklearn.metrics.roc_curve(np.array(test_labels_binary).ravel(), test_predictions.ravel())
     roc_auc["micro"] = sklearn.metrics.auc(fpr["micro"], tpr["micro"])
@@ -315,6 +317,7 @@ def multiclassRoc(test_predictions, test_labels_binary):
     plt.ylabel('True Positive Rate')
     plt.title('Some extension of Receiver operating characteristic to multi-class')
     plt.legend(loc="lower right")
+    return thresholds_for_bci
 
 
 model = RandomForestClassifier(n_estimators=10, max_depth=3)
@@ -326,7 +329,7 @@ print "LDA"
 test_model(model_lda)
 
 use_prediction = False
-raw_test_data, test_labels = readDataMultipleFiles([11])
+raw_test_data, test_labels = readDataMultipleFiles([3])
 test_data_matrix, test_data_matrices, test_labels, test_labels_binary = buildMatricesAndLabels(raw_test_data, test_labels, scaling_functions)
 test_predictions = []
 for features in test_data_matrix:
@@ -338,14 +341,15 @@ for features in test_data_matrix:
 for i in range(target_count):
     print sum(test_labels_binary[i])
 
-multiclassRoc(test_predictions, test_labels_binary)
+thresholds_for_bci = multiclassRoc(test_predictions, test_labels_binary)
 
 # model = SVC(C=1000, kernel="poly", degree=2)
 # print "SVM"
 # test_model(model)
 
-# pickle.Pickler(file("U:\\data\\my\\pickle\\model11.pkl", "w")).dump(model_lda)
-# pickle.Pickler(file("U:\\data\\my\\pickle\\model11_mm.pkl", "w")).dump(min_max)
+# pickle.Pickler(file("U:\\data\\test\\5_targets\\model0.pkl", "w")).dump(model_lda)
+# pickle.Pickler(file("U:\\data\\test\\5_targets\\model0_mm.pkl", "w")).dump(min_max)
+# pickle.Pickler(file("U:\\data\\test\\5_targets\\model0_thresh.pkl", "w")).dump(thresholds_for_bci)
 
 # print model_lda.coef_
 # plt.figure()
